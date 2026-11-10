@@ -1,0 +1,6 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 48 48" fill="none" role="img" aria-label="SpellCraft">
+  <circle cx="24" cy="27" r="3.2" fill="#f2b84b" />
+  <path d="M24 21.5 C 30 26.5, 35.5 29.5, 41.5 33" stroke="#f2b84b" stroke-width="2.3" stroke-linecap="round" />
+  <path d="M24 21.5 C 19 25.5, 14 28.5, 8.5 31" stroke="#d9e2ff" stroke-width="2.1" stroke-linecap="round" opacity="0.85" />
+  <path d="M24 21.5 C 24 28, 24.4 32.5, 25.5 37" stroke="#f5f0df" stroke-width="2" stroke-linecap="round" opacity="0.9" />
+</svg>

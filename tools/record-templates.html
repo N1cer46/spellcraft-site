@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Студия записи эталонов</title>
+<style>
+  :root {
+    --bg: #0a0e20; --panel: #111832; --ink: #f5f0df; --muted: #93a5cf; --dim: #8495be;
+    --amber: #f2b84b; --line: rgba(213, 226, 255, .13); --blue: #7fa0ff;
+  }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; min-width: 320px; min-height: 100vh; color: var(--ink);
+    font: 14px/1.5 "Segoe UI", system-ui, sans-serif;
+    background: radial-gradient(1200px 700px at 70% 18%, #1a2450 0%, rgba(26,36,80,0) 55%), radial-gradient(900px 620px at 18% 85%, #14204a 0%, rgba(20,32,74,0) 60%), var(--bg);
+  }
+  button { font: inherit; cursor: pointer; }
+  header {
+    height: 64px; display: flex; align-items: center; justify-content: space-between; gap: 16px;
+    padding: 0 22px; border-bottom: 1px solid var(--line); background: rgba(10,14,32,.75);
+  }
+  header h1 { margin: 0; font-size: 19px; letter-spacing: .04em; }
+  header small { display: block; color: var(--dim); font-size: 11px; }
+  .status { color: var(--muted); font-size: 12px; }
+  .status.ok { color: #7ee2a0; }
+  .status.err { color: #ffb9b2; }
+  main { display: grid; grid-template-columns: 300px minmax(420px, 1fr); gap: 14px; padding: 14px; min-height: calc(100vh - 64px); }
+  .panel { border: 1px solid var(--line); border-radius: 16px; background: linear-gradient(145deg, rgba(20,29,58,.9), rgba(9,13,31,.87)); box-shadow: 0 18px 46px rgba(0,0,0,.18); }
+  .list { padding: 16px 10px; overflow-y: auto; max-height: calc(100vh - 92px); }
+  .list h2 { margin: 16px 6px 8px; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .1em; }
+  .list h2:first-child { margin-top: 0; }
+  .list h2 span { color: var(--amber); }
+  .item {
+    width: 100%; display: grid; grid-template-columns: 32px 1fr auto; align-items: center; gap: 8px; text-align: left;
+    border: 1px solid transparent; background: transparent; color: var(--ink); padding: 6px; border-radius: 6px;
+  }
+  .item:hover, .item.active { background: rgba(61,75,122,.32); border-color: rgba(190,207,255,.16); }
+  .item .thumb { width: 32px; height: 32px; display: grid; place-items: center; border: 1px solid var(--line); background: rgba(243,244,255,.04); border-radius: 4px; }
+  .item .thumb img { width: 26px; height: 26px; object-fit: contain; filter: invert(1) sepia(.12) saturate(.55); }
+  .item b, .item small { display: block; }
+  .item b { font-size: 12px; font-weight: 600; }
+  .item small { color: var(--dim); font-size: 10px; }
+  .item .count { font-size: 11px; color: var(--dim); font-variant-numeric: tabular-nums; }
+  .item .count.ready { color: #7ee2a0; }
+  .main { padding: 18px; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+  .head { display: flex; justify-content: space-between; align-items: flex-start; gap: 12px; flex-wrap: wrap; }
+  .head h2 { margin: 4px 0; font-size: 26px; font-weight: 600; line-height: 1; }
+  .head .eyebrow { margin: 0; color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: .12em; }
+  .head .desc { margin: 6px 0 0; color: var(--muted); font-size: 12px; max-width: 520px; }
+  .tools { display: flex; gap: 8px; flex-wrap: wrap; }
+  .btn {
+    display: inline-flex; align-items: center; gap: 6px; border: 1px solid rgba(216,228,255,.18);
+    background: rgba(207,220,255,.05); color: #dce5ff; padding: 8px 11px; font-size: 12px; border-radius: 6px;
+  }
+  .btn:hover:not(:disabled) { border-color: rgba(242,184,75,.7); color: #ffdfa0; }
+  .btn:disabled { opacity: .4; cursor: not-allowed; }
+  .btn.primary { color: #ffe0a3; border-color: rgba(242,184,75,.5); background: rgba(242,184,75,.1); }
+  .btn.danger { color: #ffb9b2; border-color: rgba(239,117,109,.4); }
+  .stage {
+    position: relative; flex: 1; min-height: 420px; border: 1px solid var(--line); border-radius: 12px; overflow: hidden;
+    background: radial-gradient(circle at 50% 48%, rgba(69,94,165,.19), transparent 55%), rgba(6,10,25,.16);
+  }
+  .stage::before {
+    content: ""; position: absolute; inset: 0; z-index: 0; opacity: .5; pointer-events: none;
+    background: repeating-conic-gradient(from 0deg at 50% 50%, transparent 0 14deg, rgba(178,205,255,.07) 14.4deg 14.7deg, transparent 15deg 30deg);
+  }
+  .stage .guide {
+    position: absolute; z-index: 1; left: 50%; top: 50%; width: min(58%, 300px); height: min(58%, 300px);
+    object-fit: contain; transform: translate(-50%, -50%); pointer-events: none;
+    filter: invert(1) sepia(.16) saturate(.5) opacity(.14);
+  }
+  .stage canvas { position: relative; z-index: 2; display: block; width: 100%; height: 100%; touch-action: none; cursor: crosshair; }
+  .foot { display: flex; justify-content: space-between; align-items: center; gap: 12px; flex-wrap: wrap; color: var(--muted); font-size: 12px; }
+  .foot b { color: var(--amber); }
+  .foot .live { color: var(--dim); }
+  .foot .live.warn { color: var(--amber); }
+  @media (max-width: 900px) { main { grid-template-columns: 1fr; } .list { max-height: 300px; } }
+</style>
+</head>
+<body>
+<header>
+  <div>
+    <h1>Студия записи эталонов</h1>
+    <small>локальный инструмент · не входит в сайт</small>
+  </div>
+  <div id="status" class="status">загрузка…</div>
+</header>
+<main>
+  <aside class="panel list" id="list"></aside>
+  <section class="panel main">
+    <div class="head">
+      <div>
+        <p class="eyebrow" id="meta"></p>
+        <h2 id="name">—</h2>
+        <p class="desc" id="desc"></p>
+      </div>
+      <div class="tools">
+        <button class="btn" id="undo" disabled>↶ Штрих</button>
+        <button class="btn" id="clear" disabled>⌫ Холст</button>
+        <button class="btn primary" id="add" disabled>✓ В эталон</button>
+      </div>
+    </div>
+    <div class="stage">
+      <img class="guide" id="guide" alt="" />
+      <canvas id="canvas"></canvas>
+    </div>
+    <div class="foot">
+      <div>Образцов: <b id="sampleCount">0</b>/8 · <span id="hint">выберите символ слева</span> <span class="live" id="liveStrokes"></span></div>
+      <div class="tools">
+        <button class="btn" id="removeLast" disabled>↶ Образец</button>
+        <button class="btn danger" id="removeAll" disabled>Очистить</button>
+      </div>
+    </div>
+  </section>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+const canvas = $("canvas");
+const ctx = canvas.getContext("2d");
+
+let symbols = [];
+let templates = {};
+let selectedId = null;
+let strokes = [];   // штрихи текущего образца (сырые координаты холста)
+let active = [];    // штрих в процессе рисования
+let drawing = false;
+let pointerId = null;
+let drawQueued = false;
+let statusTimer = null;
+let saveChain = Promise.resolve();
+
+const count = (id) => (Array.isArray(templates[id]) ? templates[id].length : 0);
+const selected = () => symbols.find((s) => s.id === selectedId) || null;
+
+async function load() {
+  const [symbolsResp, templatesResp] = await Promise.all([fetch("/symbols.json"), fetch("/templates")]);
+  symbols = await symbolsResp.json();
+  templates = await templatesResp.json();
+  renderList();
+  if (symbols.length && !selectedId) selectSymbol(symbols[0].id);
+}
+
+function renderList() {
+  const readyTotal = symbols.filter((s) => count(s.id) >= 5).length;
+  const groups = [
+    { kind: "sigil", title: "Сигилы" },
+    { kind: "mark", title: "Знаки" },
+  ];
+  $("list").innerHTML = groups.map((group) => {
+    const items = symbols.filter((s) => s.kind === group.kind);
+    const ready = items.filter((s) => count(s.id) >= 5).length;
+    return `<h2>${group.title} <span>${ready}/${items.length}</span></h2>` +
+      items.map((s) => {
+        const n = count(s.id);
+        return `<button class="item${s.id === selectedId ? " active" : ""}" data-id="${s.id}">
+          <span class="thumb"><img src="${s.image}" alt="" /></span>
+          <span><b>${s.name}</b><small>${s.group}</small></span>
+          <span class="count${n >= 5 ? " ready" : ""}">${n >= 5 ? "✓ " : ""}${n}/8</span>
+        </button>`;
+      }).join("");
+  }).join("");
+  $("status").textContent = `готово ${readyTotal}/${symbols.length}`;
+  $("status").className = "status";
+  document.querySelectorAll(".item").forEach((el) => el.addEventListener("click", () => selectSymbol(el.dataset.id)));
+}
+
+function selectSymbol(id) {
+  selectedId = id;
+  strokes = [];
+  active = [];
+  drawing = false;
+  pointerId = null;
+  renderList();
+  renderHead();
+  draw();
+}
+
+function renderHead() {
+  const symbol = selected();
+  if (!symbol) return;
+  $("meta").textContent = (symbol.kind === "sigil" ? "Сигил" : "Знак") + " · " + symbol.group;
+  $("name").textContent = symbol.name;
+  $("desc").textContent = symbol.description;
+  $("guide").src = symbol.image;
+  $("sampleCount").textContent = count(symbol.id);
+  $("hint").textContent = count(symbol.id) >= 5 ? "готово — можно переходить к следующему" : "нарисуйте этот символ ещё " + (5 - count(symbol.id)) + " раз";
+  updateButtons();
+}
+
+function updateButtons() {
+  const symbol = selected();
+  const n = symbol ? count(symbol.id) : 0;
+  $("undo").disabled = !strokes.length;
+  $("clear").disabled = !strokes.length;
+  $("add").disabled = !strokes.length;
+  $("removeLast").disabled = n === 0;
+  $("removeAll").disabled = n === 0;
+  $("liveStrokes").textContent = strokes.length ? `· сейчас на листе штрихов: ${strokes.length}` : "";
+}
+
+function strokePath(points, color, width, alpha) {
+  if (points.length < 2) return;
+  ctx.beginPath();
+  ctx.lineCap = "round";
+  ctx.lineJoin = "round";
+  ctx.strokeStyle = color;
+  ctx.globalAlpha = alpha;
+  ctx.lineWidth = width;
+  ctx.moveTo(points[0].x, points[0].y);
+  for (let i = 1; i < points.length; i++) ctx.lineTo(points[i].x, points[i].y);
+  ctx.stroke();
+  ctx.globalAlpha = 1;
+}
+
+function draw() {
+  const rect = canvas.getBoundingClientRect();
+  const dpr = window.devicePixelRatio || 1;
+  const w = rect.width, h = rect.height;
+  if (canvas.width !== Math.round(w * dpr) || canvas.height !== Math.round(h * dpr)) {
+    canvas.width = Math.round(w * dpr);
+    canvas.height = Math.round(h * dpr);
+  }
+  ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+  ctx.clearRect(0, 0, w, h);
+  // Уже сохранённые образцы показываются в тех же координатах, в которых были нарисованы, —
+  // «что записано, то и видно», без нормализации/подгонки под центр.
+  for (const sample of (selectedId && templates[selectedId]) || []) {
+    for (const stroke of sample) strokePath(stroke, "#7fa0ff", 2, 0.16);
+  }
+  for (const stroke of strokes) strokePath(stroke, "rgba(246, 243, 232, 0.9)", 3, 1);
+  strokePath(active, "#fff7db", 3.4, 1);
+}
+
+// Рисование — по кадрам (rAF), а не синхронно на каждый pointermove: полная перерисовка
+// всех фантомов в каждом событии движения вызывала проседания кадров, из-за чего браузер
+// склеивал/терял точки движения и сложные кривые записывались как прямые линии.
+function scheduleDraw() {
+  if (drawQueued) return;
+  drawQueued = true;
+  requestAnimationFrame(() => {
+    drawQueued = false;
+    draw();
+  });
+}
+
+const pointFromEvent = (e) => {
+  const rect = canvas.getBoundingClientRect();
+  return { x: e.clientX - rect.left, y: e.clientY - rect.top, t: performance.now() };
+};
+
+function finishStroke() {
+  if (!drawing) return;
+  drawing = false;
+  const points = active;
+  active = [];
+  if (pointerId !== null) { try { canvas.releasePointerCapture(pointerId); } catch {} pointerId = null; }
+  if (points.length >= 2) strokes.push(points);
+  scheduleDraw();
+  updateButtons();
+}
+
+canvas.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse" && e.button !== 0) return;
+  try { canvas.setPointerCapture(e.pointerId); } catch {}
+  drawing = true;
+  pointerId = e.pointerId;
+  active = [pointFromEvent(e)];
+  scheduleDraw();
+});
+
+canvas.addEventListener("pointermove", (e) => {
+  if (!drawing) return;
+  // Движение может прийти уже после отпускания кнопки (релиз вне окна или устаревшее
+  // событие из очереди): рисование обязано остановиться, как только кнопка отпущена.
+  if ((e.buttons & 1) === 0) { finishStroke(); return; }
+  const point = pointFromEvent(e);
+  const last = active[active.length - 1];
+  if (!last || Math.hypot(point.x - last.x, point.y - last.y) >= 1) active.push(point);
+  scheduleDraw();
+});
+
+canvas.addEventListener("pointerup", finishStroke);
+canvas.addEventListener("pointercancel", () => { active = []; drawing = false; pointerId = null; scheduleDraw(); });
+canvas.addEventListener("pointerleave", () => {
+  if (!drawing) return;
+  let captured = false;
+  try { captured = pointerId !== null && canvas.hasPointerCapture(pointerId); } catch { /* noop */ }
+  if (!captured) finishStroke();
+});
+window.addEventListener("pointerup", finishStroke);
+window.addEventListener("blur", finishStroke);
+
+function setStatus(text, kind) {
+  $("status").textContent = text;
+  $("status").className = "status" + (kind ? " " + kind : "");
+  clearTimeout(statusTimer);
+  statusTimer = setTimeout(() => { $("status").textContent = `готово ${symbols.filter((s) => count(s.id) >= 5).length}/${symbols.length}`; $("status").className = "status"; }, 2600);
+}
+
+// Сериализуем сохранения: быстрые клики «В эталон» не должны перезаписывать файл в обратном
+// порядке и терять последний образец.
+function saveTemplates() {
+  const snapshot = JSON.stringify(templates);
+  saveChain = saveChain
+    .catch(() => {})
+    .then(async () => {
+      const resp = await fetch("/templates", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: snapshot,
+      });
+      if (!resp.ok) throw new Error("HTTP " + resp.status);
+    });
+  return saveChain;
+}
+
+function simplifyStroke(points, count = 48) {
+  // `.map` передаёт в колбэк индекс вторым аргументом; если сюда попал индекс, а не 48,
+  // возвращаем дефолт — иначе первый штрих ресемплируется в 0 точек и пропадает.
+  if (typeof count !== "number" || count < 2) count = 48;
+  const round = (v) => Math.round(v * 10) / 10;
+  if (points.length < 2) return points.map((p) => ({ x: round(p.x), y: round(p.y) }));
+  const lengths = [0];
+  for (let i = 1; i < points.length; i++) lengths.push(lengths[i - 1] + Math.hypot(points[i].x - points[i - 1].x, points[i].y - points[i - 1].y));
+  const total = lengths[lengths.length - 1] || 1;
+  const out = [];
+  let seg = 1;
+  for (let i = 0; i < count; i++) {
+    const target = (total * i) / (count - 1);
+    while (seg < lengths.length - 1 && lengths[seg] < target) seg++;
+    const span = lengths[seg] - lengths[seg - 1] || 1;
+    const t = (target - lengths[seg - 1]) / span;
+    const a = points[seg - 1], b = points[seg];
+    out.push({ x: round(a.x + (b.x - a.x) * t), y: round(a.y + (b.y - a.y) * t) });
+  }
+  return out;
+}
+
+function addSample() {
+  if (!selectedId || !strokes.length) return;
+  const cleaned = strokes.filter((stroke) => Array.isArray(stroke) && stroke.length >= 2);
+  if (!cleaned.length) { setStatus("нет штрихов для сохранения — нарисуйте символ", "warn"); return; }
+  const saved = cleaned.map((stroke) => simplifyStroke(stroke));
+  templates[selectedId] = [...(templates[selectedId] || []), saved];
+  strokes = [];
+  saveTemplates()
+    .then(() => setStatus("сохранено · " + count(selectedId) + "/8 · штрихов в образце: " + saved.length, "ok"))
+    .catch((err) => setStatus("ошибка сохранения: " + err.message, "err"));
+  renderHead();
+  renderList();
+  scheduleDraw();
+}
+
+function removeLast() {
+  if (!selectedId) return;
+  templates[selectedId] = (templates[selectedId] || []).slice(0, -1);
+  if (!templates[selectedId].length) delete templates[selectedId];
+  saveTemplates()
+    .then(() => setStatus("образец удалён", "ok"))
+    .catch((err) => setStatus("ошибка сохранения: " + err.message, "err"));
+  renderHead();
+  renderList();
+  scheduleDraw();
+}
+
+function removeAll() {
+  if (!selectedId) return;
+  delete templates[selectedId];
+  saveTemplates()
+    .then(() => setStatus("образцы очищены", "ok"))
+    .catch((err) => setStatus("ошибка сохранения: " + err.message, "err"));
+  renderHead();
+  renderList();
+  scheduleDraw();
+}
+
+$("add").addEventListener("click", addSample);
+$("undo").addEventListener("click", () => { strokes = strokes.slice(0, -1); scheduleDraw(); updateButtons(); });
+$("clear").addEventListener("click", () => { strokes = []; scheduleDraw(); updateButtons(); });
+$("removeLast").addEventListener("click", removeLast);
+$("removeAll").addEventListener("click", removeAll);
+window.addEventListener("resize", draw);
+
+load().catch((err) => { $("status").textContent = "ошибка загрузки: " + err.message; $("status").className = "status err"; });
+</script>
+</body>
+</html>
