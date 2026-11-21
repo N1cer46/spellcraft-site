@@ -1,3 +1,4 @@
+import { readFileSync } from "node:fs";
 import assert from "node:assert/strict";
 import { test } from "node:test";
 import {
@@ -42,6 +43,8 @@ test("animation continues until cancelled, reduced motion is still, and resizing
   const queue = new Map<number, FrameRequestCallback>();
   let id = 0,
     draws = 0;
+  let paused = false;
+  let trace: unknown[] = [];
   const gradient = { addColorStop() {} };
   const context = new Proxy(
     {},
@@ -49,6 +52,7 @@ test("animation continues until cancelled, reduced motion is still, and resizing
       get:
         (_, key) =>
         (...args: unknown[]) => {
+          trace.push([key, ...args.filter(arg => typeof arg === "number")]);
           for (const arg of args)
             if (typeof arg === "number")
               assert.ok(Number.isFinite(arg), String(key));
@@ -84,7 +88,8 @@ test("animation continues until cancelled, reduced motion is still, and resizing
         const stop = startSpellFx(
           canvas as unknown as HTMLCanvasElement,
           fx,
-          reduced
+          reduced,
+          () => paused
         );
         if (reduced) {
           assert.equal(queue.size, 0);
@@ -106,6 +111,17 @@ test("animation continues until cancelled, reduced motion is still, and resizing
               canvas.clientHeight = 420;
             }
           }
+          paused = true;
+          const pausedFrames: string[] = [];
+          for (const time of [14000, 15000]) {
+            const [key, callback] = queue.entries().next().value!;
+            queue.delete(key);
+            trace = [];
+            callback(time);
+            pausedFrames.push(JSON.stringify(trace));
+          }
+          assert.equal(pausedFrames[0], pausedFrames[1], "paused scene must stay still");
+          paused = false;
           assert.equal(canvas.width, 840);
           assert.equal(canvas.height, 840);
           assert.equal(queue.size, 1);
@@ -128,4 +144,25 @@ test('effects and ink circle use the same ground plane and perpendicular height'
   const up=projectSpellPoint(0,.3,0);
   assert.equal(up.x,origin.x);
   assert.ok(up.y<back.y,'vertical effects rise above the back edge of the circle');
+});
+
+
+test("eight added recipes have drawable ingredients and distinct composed scenes", () => {
+  const ids = ["wind-channel", "clear-breeze", "ice-glaives", "tidal-gather", "stone-heart", "light-beacon", "petal-vortex", "prism-mirror"];
+  const templates = JSON.parse(readFileSync("client/public/reference-templates.json", "utf8"));
+  const scenes = new Set<string>();
+  for (const id of ids) {
+    const recipe = spellRecipes.find(recipe => recipe.id === id)!;
+    assert.ok(recipe, id);
+    assert.equal(recipe.custom, undefined);
+    assert.equal(new Set(recipe.requiredMarkIds).size, 4);
+    for (const symbolId of [recipe.sigilId, ...recipe.requiredMarkIds]) {
+      assert.ok(templates[symbolId]?.length, `${id}: missing drawings for ${symbolId}`);
+    }
+    const fx = getSpellFx(recipe, byId(recipe.sigilId)!);
+    assert.ok(fx.composed, `${id}: generic fallback scene`);
+    scenes.add(JSON.stringify([0, 0.5, 2].map(time =>
+      Array.from({length: 12}, (_, i) => sampleSpellParticle(fx, i, time)))));
+  }
+  assert.equal(scenes.size, ids.length, "new scenes must differ in motion and geometry");
 });

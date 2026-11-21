@@ -1,3 +1,17 @@
+/* SpellCraft material and motion tokens. Geometry remains in the existing rules. */
+:root {
+ --space-1:4px; --space-2:8px; --space-3:12px; --space-4:16px; --space-5:24px; --space-6:32px; --space-7:48px; --space-8:64px;
+ --ease-quill:cubic-bezier(.22,1,.36,1); --ease-press:cubic-bezier(.2,.8,.2,1);
+ --dur-fast:120ms; --dur-base:180ms; --dur-slow:260ms; --dur-scene:380ms;
+ --shadow-press:0 1px 0 #fff9e8 inset,0 1px 0 #b9b09a;
+ --shadow-card:0 1px 0 #fff9e8 inset,0 2px 4px #315a480d,0 10px 24px #4b422512;
+ --shadow-lift:0 1px 0 #fff9e8 inset,0 4px 8px #315a4812,0 18px 36px #4b422518;
+ --shadow-float:0 2px 0 #fff9e8 inset,0 10px 24px #315a481a,0 32px 64px #4b422522;
+ --ink-body:#5b6650; --ink-muted:#6b6a55; --gold-ink:#6f5f35;
+ --destructive-foreground:#fff8e7;
+ --sidebar:var(--card); --sidebar-foreground:var(--foreground); --sidebar-primary:var(--primary); --sidebar-primary-foreground:var(--primary-foreground); --sidebar-accent:var(--accent); --sidebar-accent-foreground:var(--accent-foreground); --sidebar-border:var(--border); --sidebar-ring:var(--ring);
+ --chart-1:#315a48; --chart-2:#87966d; --chart-3:#ad9964; --chart-4:#8a6b36; --chart-5:#244b40;
+}
 :root,
 .dark {
   --background: #eee8d8;
@@ -102,11 +116,11 @@ a:focus-visible {
 }
 .atelier-intro {
   max-width: 1480px;
-  padding: 36px 28px 30px;
+  padding: 8px 28px 30px;
   margin: auto;
   display: flex;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
   gap: 24px;
 }
 .eyebrow {
@@ -604,11 +618,26 @@ a:focus-visible {
   padding-bottom: 10px;
 }
 .filter-row button {
-  border: 1px solid transparent;
-  color: #68765a;
-  background: transparent;
+  border: 1px solid #a8b49a;
+  border-radius: 3px;
+  color: var(--ink-body);
+  background: #faf6e9;
+  box-shadow: none;
   padding: 6px 9px;
   font-size: 10px;
+}
+.grimoire-panel .filter-row button:hover {
+  background: #dce3d1;
+  border-color: #617c60;
+}
+.grimoire-panel .filter-row button:active {
+  background: #eee8d8;
+  box-shadow: inset 0 1px 2px #315a4812;
+}
+.grimoire-panel .filter-row button[data-active="true"]:hover,
+.grimoire-panel .filter-row button[data-active="true"]:active {
+  background: #284c3d;
+  color: #fff8e6;
 }
 .filter-row button[data-active="true"] {
   background: #315a48;
@@ -825,7 +854,7 @@ a:focus-visible {
     display: none;
   }
   .atelier-intro {
-    padding-top: 25px;
+    padding-top: 8px;
   }
   .atelier-illustration {
     width: 250px;
@@ -853,7 +882,7 @@ a:focus-visible {
     height: 40px;
   }
   .atelier-intro {
-    padding: 25px 18px;
+    padding: 8px 18px 25px;
   }
   .atelier-intro h1 {
     font-size: 38px;
@@ -1837,3 +1866,342 @@ input:focus-visible {
     padding: 12px;
   }
 }
+
+[hidden] { display:none!important; }
+.site-tabs { display:flex; flex-wrap:wrap; gap:8px; max-width:1480px; margin:auto; padding:16px 28px; }
+.site-tabs a { padding:12px 18px; color:#315340; border:1px solid #a8b49a; text-decoration:none; }
+.site-tabs a[aria-current="page"] { background:#315a48; color:#fff8e6; }
+.desk-layout[data-page="grimoire"],.desk-layout[data-page="collection"] { grid-template-columns:minmax(0,1fr) 320px; }
+.desk-layout[data-page="grimoire"] .grimoire-entry,.desk-layout[data-page="collection"] .grimoire-entry { grid-column:1; }
+.desk-layout[data-page="grimoire"]:not([data-reading="true"]) .grimoire-panel,.desk-layout[data-page="collection"]:not([data-reading="true"]) .grimoire-panel { grid-column:1 / -1; max-height:none; }
+@media(max-width:680px){.site-tabs{padding:12px;gap:6px;}.site-tabs a{flex:1 1 40%;text-align:center;padding:12px 8px;}}
+.canvas-tools { flex-wrap:wrap; }
+.canvas-tools label { font-size:11px; display:flex; align-items:center; gap:6px; }
+.canvas-tools input[type=range] { width:70px; }
+.filter-row select { min-width:0; max-width:50%; padding:8px; background:#faf6e9; border:1px solid #a8b49a; }
+
+/* Tools occupy their own row, even in the narrow practice column. */
+.canvas-head > div:first-child { flex: 1 0 100%; min-width: 0; }
+.canvas-tools { width: 100%; min-width: 0; flex-shrink: 1; }
+.search-box > svg { flex: 0 0 auto; }
+.search-box input { min-width: 0; flex: 1; }
+.search-box input:focus-visible { outline: none; box-shadow: none; }
+.grimoire-panel[data-compact="true"] .recipe-card,
+.grimoire-panel[data-compact="true"] .symbol-card {
+  display: block; padding: 0; border: 0; border-bottom: 1px solid #bdc5ad;
+  background: transparent; box-shadow: none;
+}
+.catalog-summary { display: flex; flex-direction: column; gap: 5px; width: 100%; padding: 18px 12px; text-align: left; color: #315340; background: transparent; border: 0; }
+.catalog-summary strong { font-size: 16px; }
+.catalog-summary small { font-size: 13px; line-height: 1.5; color: #68765c; }
+.catalog-summary:hover { background: #315a480c; }
+.grimoire-panel[data-compact="true"] .catalog-actions { padding: 0 12px 12px; display: flex; flex-wrap: wrap; }
+.grimoire-panel[data-compact="true"] .catalog-actions button { width: auto; flex: 1 1 auto; }
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] .catalog-actions { display: none; }
+
+/* The full-page catalogue is a card shelf; the drawing sidebar stays compact. */
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] {
+  width: 100%;
+  max-width: 1160px;
+  justify-self: center;
+  box-sizing: border-box;
+}
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] .mode-switch,
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] .search-box {
+  max-width: none;
+}
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] :is(.symbol-list, .spell-list) {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
+  gap: 16px;
+  margin-top: 20px;
+  max-height: none;
+  overflow: visible;
+  padding: 2px;
+}
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] :is(.symbol-card, .recipe-card) {
+  border: 1px solid #bbc3ac;
+  border-radius: 4px;
+  background: #faf6e9;
+  box-shadow: var(--shadow-card);
+  min-width: 0;
+  transition: transform var(--dur-base) var(--ease-quill);
+}
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] .catalog-summary {
+  height: 100%;
+  min-height: 180px;
+  padding: 24px;
+  gap: 14px;
+  justify-content: center;
+  border-radius: 4px;
+  overflow-wrap: anywhere;
+}
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] .catalog-summary strong {
+  font-family: "Cormorant Garamond", Georgia, serif;
+  font-size: 25px;
+  line-height: 1.15;
+}
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] :is(.symbol-card, .recipe-card):hover {
+  border-color: #617c60;
+  box-shadow: 0 4px 0 #b9c4aa;
+}
+.catalog-summary:focus-visible { outline: 2px solid #9b7937; outline-offset: 3px; }
+.grimoire-panel[data-compact="true"] .empty-reading { grid-column: 1 / -1; }
+@media (prefers-reduced-motion: reduce) {
+  .grimoire-panel[data-compact="true"] :is(.symbol-card, .recipe-card) { transition: none; }
+}
+
+.grimoire-panel .catalog-actions .favorite-star {
+  flex: 0 0 44px; width: 44px; padding: 4px; font-size: 25px; line-height: 1;
+}
+.grimoire-panel .favorite-star[aria-pressed="true"] { color: #92702e; background: #f4e8c8; }
+.grimoire-panel[data-compact="false"] .catalog-actions .place-template { flex: 1; width: auto; }
+
+/* Symbol favorites sit beside the name in the practice sidebar. */
+.grimoire-panel[data-compact="false"] .symbol-card {
+  grid-template-columns: 37px minmax(0, 1fr) 44px;
+}
+.grimoire-panel[data-compact="false"] .symbol-card .catalog-actions {
+  grid-column: 3;
+  grid-row: 1;
+  align-self: start;
+  padding-top: 0;
+}
+
+:root { --space-sm: 8px; --space-md: 16px; --space-lg: 24px; --ink: #315a48; --paper: #faf6e9; }
+.catalog-toolbar { display: contents; }
+.desk-layout:not([data-reading="true"]) [data-compact="true"] .catalog-toolbar { display: grid; grid-template-columns: 1fr 1fr; gap: var(--space-lg); align-items: center; }
+.catalog-toolbar .search-box { margin: 0; }
+.favorites-filter { display: flex; gap: var(--space-sm); align-items: center; margin: 12px 0; font-size: 13px; }
+.tool-group { display: flex; flex-wrap: wrap; align-items: center; gap: var(--space-sm); padding: 8px; border: 1px solid #b9b99e; border-radius: 4px; }
+.canvas-tools { gap: var(--space-sm); }
+.canvas-tools label { font-size: 12px; gap: var(--space-sm); }
+.canvas-tools input[type="range"] { width: 90px; accent-color: var(--ink); }
+.grimoire-panel[data-compact="false"] .recipe-card { grid-template-columns: minmax(0,1fr); }
+:is(button, a, select, summary, input):focus-visible { outline: 2px solid #92702e; outline-offset: 3px; }
+:is(button, a, summary):hover { filter: brightness(.96); }
+:is(button, a, summary):active { transform: translateY(1px); }
+button:disabled { transform: none; filter: none; }
+.site-tabs a:hover { background: #dce3d1; }
+.site-tabs a[aria-current="page"]:hover { background: #284c3d; }
+.catalog-summary:active { background: #e7e9d9; }
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] :is(.symbol-card,.recipe-card) { transition: none; box-shadow: 0 2px 4px #315a480a, 0 5px 14px #315a4808; }
+h1,h2 { letter-spacing: -.03em; }
+.entry-columns p, .entry-columns li, .catalog-summary small { line-height: 1.7; }
+.fx-pause { position: absolute; top: 16px; left: 16px; z-index: 5; padding: 12px 16px; background: #faf6e9; color: #315a48; border: 1px solid #9b8b57; }
+.spell-fx[data-paused="true"] * { animation-play-state: paused; }
+.fx-done { transition: transform .16s, opacity .16s; }
+.fx-circle-plane { animation-duration: .4s; }
+@media(max-width:680px) { .desk-layout:not([data-reading="true"]) [data-compact="true"] .catalog-toolbar { grid-template-columns: 1fr; gap: var(--space-sm); } .tool-group { flex: 1 1 auto; } }
+@media(prefers-reduced-motion:reduce) { .atelier-illustration { transform: none !important; } button,a,summary { transition: none !important; } }
+
+/* Keep tablet reading panels and narrow drawing controls within the viewport. */
+.catalog-toolbar > *, .tool-group, .tool-group label { min-width: 0; }
+.filter-row { flex-wrap: wrap; }
+.filter-row select { flex: 1 1 130px; max-width: 100%; min-height: 44px; font: inherit; font-size: 14px; }
+@media (max-width: 980px) {
+  .desk-layout[data-page="grimoire"], .desk-layout[data-page="collection"] { grid-template-columns: minmax(0, 1fr); }
+  .desk-layout[data-reading="true"] .grimoire-panel { grid-column: 1; }
+  .entry-toolbar { flex-wrap: wrap; gap: 12px; }
+  .tool-group label { min-height: 44px; }
+}
+@media (max-width: 680px) {
+  .canvas-tools { display: grid; grid-template-columns: minmax(0, 1fr); }
+  .canvas-tools .tool-group { width: 100%; box-sizing: border-box; padding: 6px; gap: 6px; }
+  .canvas-tools .tool-group label { flex: 1; justify-content: space-between; flex-wrap: wrap; }
+  .canvas-tools input[type="range"] { width: 76px; max-width: 100%; }
+  .canvas-tools .tool-group:first-child .tool-button { flex: 1; }
+  .canvas-tools .tool-label { display: inline; }
+  .canvas-tools .tool-button { font-size: 11px; padding: 8px; }
+  .atelier-intro { padding-top: 8px; padding-bottom: 20px; }
+  .learning-panel input, .learning-panel select, .save-spell-form input { font-size: 16px; }
+  .fx-pause { left: 8px; top: 10px; padding: 10px; min-height: 44px; }
+  .fx-done { right: 8px; max-width: calc(100% - 112px); }
+}
+
+/* Paper, embossing and brass: paint-only refinements. */
+.app-shell { background: radial-gradient(ellipse at 10% 0%,#fff9e899,transparent 55%),radial-gradient(ellipse at 95% 100%,#87966d19,transparent 65%),radial-gradient(ellipse at center,transparent 55%,#4b42250a),repeating-linear-gradient(0deg,#9a895507 0 1px,transparent 1px 4px),#eee8d8; }
+body::before { content:""; position:fixed; inset:0; pointer-events:none; z-index:50; opacity:.04; background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='.9' numOctaves='3' stitchTiles='stitch'/%3E%3C/filter%3E%3Cpath fill='%23315a48' filter='url(%23n)' d='M0 0h160v160H0z'/%3E%3C/svg%3E"); }
+.topbar { background:repeating-linear-gradient(135deg,#fff9e806 0 1px,transparent 1px 4px),#244b40; box-shadow:inset 0 1px 0 #fff8e714; }
+.topbar,.canvas-head,.grimoire-heading,.site-footer { position:relative; }
+.topbar::after,.site-footer::before { content:""; position:absolute; pointer-events:none; left:0; right:0; height:6px; background:linear-gradient(#ad9964 0 1px,transparent 1px 4px,#8a6b36 4px 6px); }
+.topbar::after { bottom:0; }
+.canvas-head { border-bottom-color:#ad9964; }
+.grimoire-heading::after { content:""; position:absolute; pointer-events:none; left:0; right:0; bottom:0; height:1px; background:#ad9964; }
+.site-footer::before { top:0; }
+.site-footer { color:var(--ink-muted); font-size:11px; }
+.brand-lockup img,.symbol-thumb { outline:1px solid #d8ceb1; outline-offset:3px; box-shadow:var(--shadow-card); transition:transform var(--dur-slow) var(--ease-quill); }
+.brand-lockup:hover img { transform:rotate(-3deg); }
+.site-tabs a { position:relative; box-shadow:var(--shadow-press); }
+.site-tabs a::after { content:""; position:absolute; left:12%; right:12%; bottom:2px; height:2px; background:#ad9964; transform:scaleX(0); transition:transform var(--dur-base) var(--ease-quill); }
+.site-tabs a:hover::after,.site-tabs a[aria-current="page"]::after { transform:scaleX(1); }
+.site-tabs a[aria-current="page"]::before { content:""; position:absolute; top:-1px; right:10px; width:9px; height:12px; background:#eee8d8; clip-path:polygon(0 0,100% 0,100% 100%,50% 75%,0 100%); }
+.atelier-intro em { position:relative; }
+.atelier-intro em::after { content:""; position:absolute; bottom:0; left:0; width:100%; height:2px; background:#ad9964; transform-origin:left; animation:ink-underline var(--dur-scene) var(--ease-quill) both; }
+.atelier-illustration > span { font-family:"IBM Plex Mono",monospace; font-size:10px; letter-spacing:.3em; }
+.canvas-shell { border-color:#beb594; box-shadow:var(--shadow-lift); }
+.canvas-tools { background:#f7f2e5; box-shadow:inset 0 1px 3px #4b422512; }
+.canvas-stage { background:radial-gradient(ellipse at 25% 20%,#fff9e866,transparent 60%),radial-gradient(ellipse at center,transparent 55%,#4b422509); }
+.grimoire-panel { box-shadow:var(--shadow-card); background-image:repeating-linear-gradient(0deg,transparent 0 10px,#ad996466 10px 12px); background-size:1px 100%; background-position:3px 0; background-repeat:no-repeat; }
+.grimoire-entry,.learning-panel,.learning-summary span { box-shadow:var(--shadow-card); }
+.entry-margin { background-image:linear-gradient(135deg,transparent 10px,#fff9e866 10px); }
+.entry-plate img { box-shadow:var(--shadow-lift); }
+.entry-columns p,.entry-columns li,.intro-copy,.reading-card p { color:var(--ink-body); line-height:1.7; }
+.empty-reading,.catalog-summary small,.recipe-card small,.symbol-card small { color:var(--ink-muted); }
+.eyebrow,.entry-columns li::marker { color:var(--gold-ink); }
+.topbar .eyebrow { color:#e2d7b5; }
+.stage-caption,.identified-list small { font-family:"IBM Plex Mono",monospace; font-size:10px; color:var(--ink-muted); }
+:is(button,a,summary) { transition:transform var(--dur-base) var(--ease-quill),opacity var(--dur-base) var(--ease-quill); }
+:is(button,a,summary):hover { filter:none; }
+button,.catalog-actions button,.tool-button { box-shadow:var(--shadow-press); }
+:is(button,a,summary):not(:disabled):hover { transform:translateY(-1px); }
+:is(button,a,summary):not(:disabled):active { transform:translateY(1px); box-shadow:inset 0 1px 3px #315a4822; }
+:is(button,a,input,select,summary):focus-visible { outline:2px solid #92702e; outline-offset:3px; }
+.search-box:focus-within { border-color:#92702e; box-shadow:inset 0 -2px #92702e; }
+:is(button,summary,select),.site-tabs a { min-height:44px; }
+.favorite-star,.entry-pagination button { min-width:44px; }
+.symbol-card,.recipe-card { transition:transform var(--dur-base) var(--ease-quill); }
+.symbol-card:hover,.recipe-card:hover { transform:none; }
+.symbol-card:hover .symbol-thumb { transform:none; }
+
+.favorite-star[aria-pressed="true"] { animation:seal-press 180ms var(--ease-press); }
+.progress-steps [data-done="true"] i { animation:seal-press 180ms var(--ease-press); }
+.identified-list > * { animation:ink-arrive 180ms var(--ease-quill); }
+.grimoire-entry { animation:paper-arrive 260ms var(--ease-quill); }
+.spell-fx,.fx-discovery { box-shadow:var(--shadow-float); }
+.fx-pause,.fx-done { box-shadow:var(--shadow-card); }
+@keyframes ink-underline { from { transform:scaleX(0); } to { transform:scaleX(1); } }
+@keyframes seal-press { 0% { transform:scale(.9); } 60% { transform:scale(1.08); } 100% { transform:scale(1); } }
+@keyframes ink-arrive { from { opacity:0; transform:translateY(6px); } to { opacity:1; transform:translateY(0); } }
+@keyframes paper-arrive { from { opacity:.96; transform:translateY(10px) rotateX(.6deg); } to { opacity:1; transform:none; } }
+@media(prefers-reduced-motion:reduce) { *,*::before,*::after { animation:none!important; transition:none!important; } :is(button,a,summary):hover,:is(button,a,summary):active,.symbol-card:hover,.recipe-card:hover,.symbol-card:hover .symbol-thumb,.brand-lockup:hover img { transform:none; } }
+.progress-steps { position:relative; }
+.progress-steps > div { position:relative; }
+.progress-steps > div:not(:last-child)::after { content:""; position:absolute; width:1px; height:12px; left:14px; top:100%; background:#c7bea3; pointer-events:none; }
+.progress-steps > div[data-done="true"]::after { background:#315a48; }
+.state-dot.ready,.state-dot.active { animation:status-breathe 380ms ease-in-out 1; }
+@keyframes status-breathe { 0%,100% { opacity:1; } 50% { opacity:.55; } }
+@media(max-width:1180px) { .progress-steps > div::after { display:none; } }
+@media(prefers-reduced-motion:reduce) { .state-dot.ready,.state-dot.active { animation:none; } }
+
+/* Keep catalogue hit targets still while moving between entries and filters. */
+.grimoire-panel :is(button,a):hover,
+.grimoire-panel :is(button,a):active { transform:none; }
+.grimoire-panel .mode-switch button { box-shadow:none; }
+.reading-card { background:none; box-shadow:none; }
+
+/* Expanded practice sheet keeps the same canvas instance and logical coordinates. */
+.canvas-shell[data-expanded="true"] {
+  position:fixed;
+  inset:0;
+  z-index:1000;
+  width:100%;
+  height:100dvh;
+  box-sizing:border-box;
+  padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left);
+  border:0;
+  border-radius:0;
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  overflow:auto;
+  overscroll-behavior:contain;
+  background:#eee8d8;
+}
+.canvas-shell[data-expanded="true"] > .canvas-head {
+  position:absolute;
+  z-index:20;
+  top:calc(env(safe-area-inset-top) + 8px);
+  left:calc(env(safe-area-inset-left) + 8px);
+  width:auto;
+  max-width:calc(100% - 16px - env(safe-area-inset-left) - env(safe-area-inset-right));
+  min-height:0;
+  padding:4px;
+  background:#faf6e9;
+  border:1px solid #beb594;
+  box-shadow:var(--shadow-card);
+}
+.canvas-shell[data-expanded="true"] .canvas-head > div:first-child,
+.canvas-shell[data-expanded="true"] .canvas-head::after { display:none; }
+.canvas-shell[data-expanded="true"] .canvas-tools {
+  display:flex; width:auto; flex-wrap:wrap; gap:4px; background:none; box-shadow:none;
+}
+.canvas-shell[data-expanded="true"] .canvas-tools > .tool-group { display:none; }
+.canvas-shell[data-expanded="true"][data-tools-open="true"] .canvas-tools > .tool-group {
+  display:flex; flex:1 1 100%; width:100%;
+}
+.canvas-shell[data-expanded="true"][data-tools-open="true"] > .canvas-head { width:320px; }
+.canvas-shell[data-expanded="true"] > .canvas-stage {
+  width:min(100%, var(--expanded-sheet-size, 100dvh));
+  aspect-ratio:1;
+  flex-shrink:0;
+  margin-block:auto;
+}
+.canvas-shell[data-expanded="true"] .stage-caption { display:none; }
+.canvas-shell[data-expanded="true"] > .canvas-foot { display:none; }
+/* Ambiguous readings remain actionable without reserving space beneath the sheet. */
+.canvas-shell[data-expanded="true"] > .canvas-foot:has(.choice-chip) {
+  display:block; position:absolute; bottom:env(safe-area-inset-bottom); z-index:21;
+  max-width:100%; padding:8px; background:#faf6e9; box-shadow:var(--shadow-card);
+}
+.canvas-shell[data-expanded="true"] .canvas-foot .guide-line { display:none; }
+.canvas-shell[data-expanded="true"] .fx-pause { top:72px; }
+.canvas-expand { min-width:44px; min-height:44px; }
+
+.entry-columns ul,
+.entry-related > ul { list-style:disc; padding-left:22px; margin:12px 0; }
+.entry-related > ul li { margin-bottom:12px; padding-left:5px; color:var(--ink-body); line-height:1.7; }
+.entry-related > ul li::marker { color:var(--gold-ink); }
+
+/* The article sidebar uses the same compact rows as the practice grimoire. */
+.grimoire-panel[data-reading-sidebar="true"] .symbol-card {
+  display:grid; grid-template-columns:minmax(0,1fr) 44px; align-items:center;
+  gap:8px; padding:8px 5px 8px 12px; border:1px solid transparent;
+  border-bottom-color:#a1b08e33;
+}
+.grimoire-panel[data-reading-sidebar="true"] .symbol-card[data-active="true"],
+.grimoire-panel[data-reading-sidebar="true"] .recipe-card[data-active="true"] {
+  background:#faf5e4; border-color:#9cae88; box-shadow:inset 3px 0 #315a48;
+}
+.grimoire-panel[data-reading-sidebar="true"] .symbol-card .catalog-summary {
+  display:flex; flex-direction:row; align-items:center; gap:12px;
+  min-width:0; padding:4px 0; box-shadow:none;
+}
+.catalog-symbol-copy { display:flex; flex-direction:column; gap:5px; min-width:0; }
+.grimoire-panel[data-reading-sidebar="true"] .symbol-thumb { flex:0 0 37px; }
+.grimoire-panel[data-reading-sidebar="true"] .catalog-summary strong { font-size:13px; }
+.grimoire-panel[data-reading-sidebar="true"] .catalog-summary small { font-size:11px; }
+.grimoire-panel[data-reading-sidebar="true"] .symbol-card .catalog-actions {
+  grid-column:2; grid-row:1; align-self:center; justify-self:end; padding:0;
+}
+.grimoire-panel[data-reading-sidebar="true"] .catalog-actions .favorite-star {
+  flex:0 0 44px; width:44px; height:44px; min-width:44px;
+}
+.grimoire-panel[data-reading-sidebar="true"] .recipe-card { border:1px solid #a1b08e33; }
+.grimoire-panel[data-reading-sidebar="true"] .recipe-card .catalog-summary { box-shadow:none; }
+
+.grimoire-panel[data-compact="false"] .symbol-card { padding-left:12px; }
+
+/* Catalogue cards use the full text width; only the open article gets sidebar rows. */
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] .catalog-summary {
+  align-items:stretch;
+  overflow-wrap:normal;
+  word-break:normal;
+}
+.desk-layout:not([data-reading="true"]) .catalog-symbol-copy { width:100%; gap:14px; }
+.desk-layout:not([data-reading="true"]) .grimoire-panel[data-compact="true"] .catalog-summary strong {
+  font-size:clamp(20px, 1.8vw, 25px);
+  overflow-wrap:normal;
+  word-break:normal;
+}
+
+.mastery-card { margin:24px 0; padding:24px; border:1px solid #beb594; border-left:4px solid #315a48; background:#faf6e9; box-shadow:var(--shadow-card); }
+.mastery-card h3 { font:600 30px/1.2 "Cormorant Garamond",serif; color:#315a48; margin:8px 0; }
+.mastery-card p { color:var(--ink-body); line-height:1.7; }
+.mastery-track { height:8px; background:#dce3d1; margin:16px 0; overflow:hidden; }
+.mastery-track > span { display:block; height:100%; background:#315a48; transform-origin:left; }
+.mastery-card summary { display:flex; align-items:center; cursor:pointer; color:#315a48; text-decoration:underline; text-underline-offset:4px; }
+.mastery-ranks { list-style:none; padding:0; margin:12px 0 0; }
+.mastery-ranks li { display:flex; justify-content:space-between; flex-wrap:wrap; gap:8px; padding:8px 0; border-bottom:1px solid #d8ceb1; color:var(--ink-body); font-size:13px; }
+.mastery-ranks li[aria-current="step"] { font-weight:700; color:#315a48; }
+@media(max-width:480px) { .mastery-card { padding:16px; } }

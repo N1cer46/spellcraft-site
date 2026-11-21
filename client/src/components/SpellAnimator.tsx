@@ -3,7 +3,7 @@
  * page, tilts it down into a 3D "floor" (CSS perspective, so the sigil and marks stay legible), and
  * plays a procedural particle animation above it that embodies the resolved spell.
  */
-import { useEffect, useMemo, useRef, type CSSProperties } from "react";
+import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 import { byId, type SpellRecipe } from "@/data/spellbook";
 import type { InkStroke } from "@/lib/recognizer";
@@ -87,18 +87,28 @@ export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }
   const fxCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const sigil = byId(sigilId);
   const fx = useMemo(() => (sigil ? getSpellFx(recipe, sigil) : null), [recipe, sigil]);
-  const reduced = useMemo(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches, []);
+  const [reduced, setReduced] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
+  const [paused, setPaused] = useState(false);
+  const pausedRef = useRef(false);
+  pausedRef.current = paused;
+  useEffect(() => {
+    const media = window.matchMedia("(prefers-reduced-motion: reduce)");
+    const sync = () => setReduced(media.matches);
+    media.addEventListener("change", sync);
+    return () => media.removeEventListener("change", sync);
+  }, []);
   const texture = useMemo(() => renderCircleTexture(strokes, size), [strokes, size]);
 
   useEffect(() => {
     if (!fx || !fxCanvasRef.current) return;
-    const stop = startSpellFx(fxCanvasRef.current, fx, reduced);
+    const stop = startSpellFx(fxCanvasRef.current, fx, reduced, () => pausedRef.current);
     return stop;
   }, [fx, reduced]);
 
   return (
     <div
       className="spell-fx"
+      data-paused={paused}
       role="dialog"
       aria-label={`Заклинание «${recipe.name}» активировано`}
       style={{ "--fx-glow": fx?.glow ?? "#f2b84b", "--fx-plane-y": `${SPELL_PLANE.y * 100}%`, "--fx-plane-size": `${SPELL_PLANE.diameter * 100}%`, "--fx-plane-tilt": `${SPELL_PLANE.tilt}deg` } as CSSProperties}
@@ -121,6 +131,7 @@ export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }
           {sigil && <em>{sigil.name}</em>}
         </div>
       </div>
+      {!reduced && <button type="button" className="fx-pause" aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? "Продолжить" : "Пауза"}</button>}
       <button type="button" className="fx-done" onClick={onDone}><RotateCcw size={16} /> Нарисовать снова</button>
     </div>
   );

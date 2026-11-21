@@ -1,3 +1,4 @@
+import { composeSpell } from "./spell-composer";
 import { SPELL_PLANE, projectSpellPoint } from "./spell-projection";
 import type { SpellRecipe, SymbolDefinition } from "@/data/spellbook";
 
@@ -58,8 +59,11 @@ export function getSpellFx(
   recipe: SpellRecipe,
   sigil: SymbolDefinition
 ): SpellFx {
-  if (recipe.custom && recipe.effect) {
-    const e=recipe.effect;
+  // New catalogue formulas use the same visual grammar as their drawn ingredients.
+  const composed = recipe.custom ? recipe.effect : !presets[recipe.id]
+    ? composeSpell(recipe.sigilId, recipe.requiredMarkIds)?.effect : undefined;
+  if (composed) {
+    const e=composed;
     const colors={fire:"#ff863a",water:"#69caff",crystal:"#8ce2c0",light:"#ffe8ac",wind:"#c7e9ff",bird:"#ffe2b3",thread:"#ffe2a0",barrier:"#9fdfff",petal:"#ffb5d3"};
     return {id:recipe.id,material:e.material,glow:colors[e.material],count:Math.min(180,Math.round(100*e.intensity)),period:4/e.speed,composed:e};
   }
@@ -247,7 +251,8 @@ export function sampleSpellParticle(
 export function startSpellFx(
   canvas: HTMLCanvasElement,
   fx: SpellFx,
-  reduced: boolean
+  reduced: boolean,
+  isPaused: () => boolean = () => false
 ): () => void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => {};
@@ -493,7 +498,7 @@ export function startSpellFx(
   };
   const tick = (now: number) => {
     if (stopped) return;
-    if (last !== undefined)
+    if (last !== undefined && !isPaused())
       time += Math.max(0, Math.min(0.05, (now - last) / 1000));
     last = now;
     draw();
