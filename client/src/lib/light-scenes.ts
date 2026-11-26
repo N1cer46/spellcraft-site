@@ -156,6 +156,20 @@ export function drawLightWindow(
   ctx.clip();
   forest(ctx, true);
   glow(ctx, 0.49 + Math.sin(time * 0.85) * 0.06, 0.42, 0.12, "#d2e8b2", "59");
+  ctx.fillStyle = "#e0f5c6";
+  for (let i = 0; i < 15; i++) {
+    const phase = fract(time * 0.18 + i * 0.618);
+    ctx.globalAlpha = Math.sin(Math.PI * phase) * 0.43;
+    ctx.beginPath();
+    ctx.arc(
+      0.33 + fract(i * 0.382) * 0.34 + 0.008 * Math.sin(time + i),
+      0.51 - phase * 0.24,
+      0.0014 + (i % 3) * 0.00045,
+      0,
+      tau
+    );
+    ctx.fill();
+  }
   ctx.restore();
   polygon(ctx, corners);
   ctx.lineWidth = 0.013;
@@ -231,6 +245,22 @@ export function drawMirrorPrism(
     ctx.strokeStyle = "#e9ecff";
     ctx.stroke();
   }
+  polygon(ctx, [top, right, bottom, left]);
+  ctx.save();
+  ctx.clip();
+  const pass = core.x + Math.sin(time * 1.25) * radius * 0.72;
+  const sheen = ctx.createLinearGradient(
+    pass - 0.026,
+    core.y,
+    pass + 0.049,
+    core.y + 0.022
+  );
+  sheen.addColorStop(0, "#f0f7ff00");
+  sheen.addColorStop(0.48, "#f0f7ff46");
+  sheen.addColorStop(1, "#f0f7ff00");
+  ctx.fillStyle = sheen;
+  ctx.fillRect(left.x, top.y, right.x - left.x, bottom.y - top.y);
+  ctx.restore();
   glow(ctx, center.x, center.y, 0.052, "#eaf5ff", "d9");
 }
 
@@ -278,6 +308,18 @@ export function drawSignalBeacon(
     );
     ctx.stroke();
   }
+  ctx.strokeStyle = "#fff1cb";
+  ctx.lineWidth = 0.0017;
+  for (let i = 0; i < 13; i++) {
+    const age = fract(time * 0.89 + i * 0.618);
+    const y = ground.y - age * 0.49 * growth;
+    const x = ground.x + Math.sin(i * 2.4 + age * 0.72) * 0.038;
+    ctx.globalAlpha = Math.sin(age * Math.PI) * (0.25 + pulse * 0.52);
+    ctx.beginPath();
+    ctx.moveTo(x, y);
+    ctx.lineTo(x, y - (0.006 + age * 0.014) * growth);
+    ctx.stroke();
+  }
   ctx.globalAlpha = 1;
   glow(ctx, ground.x, ground.y - 0.015, 0.09, "#fff3c3", "bf");
   ctx.strokeStyle = "#ffe6a2b5";
@@ -315,13 +357,17 @@ export function drawGuidingThread(ctx: CanvasRenderingContext2D, time: number) {
   ctx.lineWidth = 0.002;
   ctx.stroke();
 
-  const pulse = fract(time / 2.1);
-  const point = threadPoint(pulse);
-  path(Math.max(0, pulse - 0.19), pulse);
   ctx.strokeStyle = "#fff1b6";
   ctx.lineWidth = 0.004;
-  ctx.stroke();
-  glow(ctx, point.x, point.y, 0.043, "#ffdb8d", "b8");
+  for (const offset of [0, 0.47]) {
+    const pulse = fract(time / 2.1 + offset);
+    const point = threadPoint(pulse);
+    ctx.globalAlpha = Math.sin(Math.PI * pulse) * (offset === 0 ? 1 : 0.38);
+    path(Math.max(0, pulse - 0.19), pulse);
+    ctx.stroke();
+    glow(ctx, point.x, point.y, 0.043, "#ffdb8d", "b8");
+  }
+  ctx.globalAlpha = 1;
   const end = threadPoint(1);
   glow(ctx, end.x, end.y, 0.065, "#ffdc93", "86");
   const size = 0.016 + Math.sin(time * 2.5) * 0.003;

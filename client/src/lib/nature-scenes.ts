@@ -150,6 +150,7 @@ export function drawBloom(
   ctx.fillRect(head.x - 0.205, head.y - 0.205, 0.41, 0.41);
   for (let layer = 0; layer < 2; layer++) {
     const count = layer ? 7 : 10;
+    const opening = layer ? growth ** 1.7 : growth ** 1.35;
     for (let i = 0; i < count; i++) {
       ctx.save();
       ctx.translate(head.x, head.y);
@@ -158,9 +159,9 @@ export function drawBloom(
       if (layer) ctx.translate(0, -0.013 * growth);
       const length =
         (layer ? 0.095 : 0.166) *
-        growth *
+        opening *
         (1 + Math.sin(i * 2.1 + time * 1.3) * 0.07);
-      petal(ctx, length, (layer ? 0.036 : 0.054) * growth, i + layer);
+      petal(ctx, length, (layer ? 0.036 : 0.054) * opening, i + layer);
       ctx.restore();
     }
   }
@@ -218,7 +219,7 @@ export function drawPetalVortex(
     ctx.stroke();
   }
 
-  const petals = Array.from({ length: 27 }, (_, i) => {
+  const petals = Array.from({ length: 30 }, (_, i) => {
     const u = fract(time * (0.24 + (i % 4) * 0.025) + i * 0.618);
     return { i, u, point: pointAt(u, i % 3) };
   }).sort((a, b) => a.point.z - b.point.z);

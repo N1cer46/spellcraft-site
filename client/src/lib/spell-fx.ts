@@ -8,6 +8,7 @@ import {
   drawClearBreeze, drawCyclone, drawTidalGather, drawWindChannel, drawWindStep,
 } from "./air-scenes";
 import { drawBloom, drawPetalVortex, drawWingedChoir } from "./nature-scenes";
+import { drawSealedBarrier, drawWaterOrb } from "./water-scenes";
 import { drawFireColumn, drawFireLance } from "./fire-scenes";
 import type { SpellRecipe, SymbolDefinition } from "@/data/spellbook";
 
@@ -260,6 +261,8 @@ export function sampleSpellParticle(
 const scenes: ReadonlyMap<string, (ctx: CanvasRenderingContext2D, time: number, growth: number) => void> = new Map([
   ["fire-column", drawFireColumn],
   ["fire-lance", drawFireLance],
+  ["water-orb", drawWaterOrb],
+  ["sealed-barrier", drawSealedBarrier],
   ["rainfield", drawRainField],
   ["crystal-spire", drawCrystalSpire],
   ["light-window", drawLightWindow],
@@ -546,10 +549,15 @@ export function startSpellFx(
     frame = requestAnimationFrame(tick);
   };
   draw();
+  const staticResize = reduced && typeof ResizeObserver !== "undefined"
+    ? new ResizeObserver(draw)
+    : undefined;
+  staticResize?.observe(canvas);
   if (!reduced) frame = requestAnimationFrame(tick);
   return () => {
     stopped = true;
     cancelAnimationFrame(frame);
+    staticResize?.disconnect();
     sprites.clear();
   };
 }

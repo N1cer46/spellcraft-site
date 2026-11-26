@@ -22,7 +22,7 @@ type Props = {
 const INK = "#e8e0bc";
 
 /** Renders the user's ink + a parchment disc + an activation ring into a square texture. */
-function renderCircleTexture(strokes: InkStroke[], size: Props["size"]) {
+function renderCircleTexture(strokes: InkStroke[], size: Props["size"], tint: string) {
   const minSide = Math.max(1, Math.min(size.width, size.height));
   const textureSize = Math.min(1024, Math.max(320, Math.round(minSide * 1.6)));
   const canvas = document.createElement("canvas");
@@ -49,6 +49,12 @@ function renderCircleTexture(strokes: InkStroke[], size: Props["size"]) {
   parchment.addColorStop(1, "rgba(16, 32, 26, 0.98)");
   context.fillStyle = parchment;
   context.fillRect(0, 0, textureSize, textureSize);
+  const reflected = context.createRadialGradient(radius, radius, 0, radius, radius, radius * 0.93);
+  reflected.addColorStop(0, tint + "25");
+  reflected.addColorStop(0.52, tint + "10");
+  reflected.addColorStop(1, tint + "00");
+  context.fillStyle = reflected;
+  context.fillRect(0, 0, textureSize, textureSize);
 
   // User's ink.
   const lineWidth = Math.max(2, textureSize * 0.006);
@@ -72,12 +78,22 @@ function renderCircleTexture(strokes: InkStroke[], size: Props["size"]) {
   context.shadowBlur = 0;
 
   // Activation ring.
-  context.strokeStyle = "rgba(242, 184, 75, 0.95)";
-  context.shadowColor = "rgba(242, 184, 75, 0.9)";
+  const rim = context.createLinearGradient(radius, 0, radius, textureSize);
+  rim.addColorStop(0, tint + "8c");
+  rim.addColorStop(0.42, "#d3b16b");
+  rim.addColorStop(1, "#ffeac3");
+  context.strokeStyle = rim;
+  context.shadowColor = tint + "b3";
   context.shadowBlur = textureSize * 0.02;
   context.lineWidth = Math.max(3, textureSize * 0.008);
   context.beginPath();
   context.arc(radius, radius, radius - lineWidth * 3, 0, Math.PI * 2);
+  context.stroke();
+  context.shadowBlur = 0;
+  context.strokeStyle = tint + "48";
+  context.lineWidth = Math.max(1, textureSize * 0.0017);
+  context.beginPath();
+  context.arc(radius, radius, radius - lineWidth * 5, 0, Math.PI * 2);
   context.stroke();
   context.restore();
 
@@ -98,7 +114,8 @@ export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }
     media.addEventListener("change", sync);
     return () => media.removeEventListener("change", sync);
   }, []);
-  const texture = useMemo(() => renderCircleTexture(strokes, size), [strokes, size]);
+  const tint = fx?.glow ?? "#f2b84b";
+  const texture = useMemo(() => renderCircleTexture(strokes, size, tint), [strokes, size, tint]);
 
   return (
     <div
@@ -106,7 +123,7 @@ export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }
       data-paused={paused}
       role="dialog"
       aria-label={`Заклинание «${recipe.name}» активировано`}
-      style={{ "--fx-glow": fx?.glow ?? "#f2b84b", "--fx-plane-y": `${SPELL_PLANE.y * 100}%`, "--fx-plane-size": `${SPELL_PLANE.diameter * 100}%`, "--fx-plane-tilt": `${SPELL_PLANE.tilt}deg` } as CSSProperties}
+      style={{ "--fx-glow": tint, "--fx-plane-y": `${SPELL_PLANE.y * 100}%`, "--fx-plane-size": `${SPELL_PLANE.diameter * 100}%`, "--fx-plane-tilt": `${SPELL_PLANE.tilt}deg` } as CSSProperties}
     >
       <div className="fx-scene">
         <div className="fx-floor" aria-hidden="true" />
@@ -120,11 +137,11 @@ export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }
           />
         </div>
         {fx && <SpellEffects fx={fx} reduced={reduced} isPaused={isPaused} />}
-        <div className="fx-caption">
-          <span><Sparkles size={14} /> Активировано</span>
-          <strong>{recipe.name}</strong>
-          {sigil && <em>{sigil.name}</em>}
-        </div>
+      </div>
+      <div className="fx-caption">
+        <span><Sparkles size={14} /> Активировано</span>
+        <strong>{recipe.name}</strong>
+        {sigil && <em>{sigil.name}</em>}
       </div>
       {!reduced && <button type="button" className="fx-pause" aria-pressed={paused} onClick={() => setPaused(!paused)}>{paused ? "Продолжить" : "Пауза"}</button>}
       <button type="button" className="fx-done" onClick={onDone}><RotateCcw size={16} /> Нарисовать снова</button>

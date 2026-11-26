@@ -15,7 +15,7 @@ const drops = Array.from({ length: 116 }, (_, i) => {
     phase: random(i + 613),
     speed: 0.8 + random(i + 919) * 0.7,
   };
-});
+}).sort((a, b) => a.z - b.z);
 
 export function drawRainField(ctx: CanvasRenderingContext2D, time: number) {
   const ground = SPELL_PLANE.y;
@@ -51,9 +51,9 @@ export function drawRainField(ctx: CanvasRenderingContext2D, time: number) {
       const tail = project(x - 0.004, height + 0.013 + falling * 0.036, drop.z);
       ctx.moveTo(tail.x, tail.y);
       ctx.lineTo(head.x, head.y);
-      ctx.lineWidth = 0.0008 + falling * 0.0011;
+      ctx.lineWidth = (0.00075 + falling * 0.0012) * (1 + drop.z * 1.2);
       ctx.strokeStyle = "#b8edff";
-      ctx.globalAlpha = 0.15 + falling * 0.52;
+      ctx.globalAlpha = (0.2 + falling * 0.54) * (0.83 + drop.z * 0.5);
     } else {
       const ripple = (age - 0.76) / 0.24;
       const radius = 0.003 + ripple * 0.034;
@@ -61,6 +61,22 @@ export function drawRainField(ctx: CanvasRenderingContext2D, time: number) {
       ctx.lineWidth = 0.001;
       ctx.strokeStyle = "#96dfff";
       ctx.globalAlpha = (1 - ripple) * 0.55;
+      if (ripple < 0.53) {
+        const splash = Math.sin((ripple * Math.PI) / 0.53) * 0.012;
+        ctx.moveTo(floor.x - splash, floor.y - splash);
+        ctx.quadraticCurveTo(
+          floor.x - splash * 0.7,
+          floor.y - splash * 1.2,
+          floor.x,
+          floor.y
+        );
+        ctx.quadraticCurveTo(
+          floor.x + splash * 0.7,
+          floor.y - splash * 1.2,
+          floor.x + splash,
+          floor.y - splash
+        );
+      }
     }
     ctx.stroke();
   }
@@ -98,7 +114,8 @@ export function drawCrystalSpire(
     ctx.closePath();
   };
   shards.forEach((shard, index) => {
-    const height = shard.height * growth;
+    const reveal = growth === 1 ? 1 : growth ** (0.8 + index * 0.23);
+    const height = shard.height * reveal;
     const angle = index * 0.83;
     const ring = Array.from({ length: 6 }, (_, i) => {
       const phi = angle + (i * tau) / 6;
@@ -188,7 +205,7 @@ export function drawIceGlaives(
     ctx.save();
     ctx.translate(point.x, point.y);
     ctx.rotate(-0.36 - i * 0.08);
-    ctx.globalAlpha = 0.51 + 0.49 * Math.sin(phase * Math.PI);
+    ctx.globalAlpha = 0.25 + 0.75 * Math.sin(phase * Math.PI) ** 0.62;
     const tail = ctx.createLinearGradient(-length, 0, 0.03, 0);
     tail.addColorStop(0, "#79dbff00");
     tail.addColorStop(1, "#98edff8f");
@@ -205,15 +222,18 @@ export function drawIceGlaives(
       tip = { x: length * 0.53, y: -0.021 };
     const edge = { x: length * 0.14, y: 0.026 };
     const faces = [
-      { color: "#a2eafb", points: [shoulder, tip, ridge] },
-      { color: "#469cb9", points: [shoulder, ridge, heel] },
-      { color: "#d8f9ff", points: [heel, ridge, tip, edge] },
+      { colors: ["#74c1df", "#d4faff"], points: [shoulder, tip, ridge] },
+      { colors: ["#317c99", "#69c4db"], points: [shoulder, ridge, heel] },
+      { colors: ["#8cd5ee", "#e8fcff"], points: [heel, ridge, tip, edge] },
     ];
     ctx.lineWidth = 0.0015;
     ctx.strokeStyle = "#e0fbff";
     for (const face of faces) {
       polygon(ctx, face.points);
-      ctx.fillStyle = face.color;
+      const facet = ctx.createLinearGradient(heel.x, heel.y, tip.x, tip.y);
+      facet.addColorStop(0, face.colors[0]);
+      facet.addColorStop(1, face.colors[1]);
+      ctx.fillStyle = facet;
       ctx.fill();
       ctx.stroke();
     }
@@ -278,26 +298,40 @@ export function drawStoneHeart(
       };
     })
   );
-  const faces = bands
-    .slice(0, -1)
-    .flatMap((ring, j) =>
-      ring.flatMap((a, i) => {
-        const next = (i + 1) % ring.length;
-        const b = ring[next],
-          c = bands[j + 1][i],
-          d = bands[j + 1][next];
-        return [
-          [a, b, c],
-          [c, b, d],
-        ].map((points, k) => ({
-          points,
-          depth: points.reduce((sum, p) => sum + p.z, 0) / 3,
-          seed: i + j * 11 + k * 23,
-          band: j,
-        }));
-      })
-    )
-    .sort((a, b) => a.depth - b.depth);
+  const faces = bands.slice(0, -1).flatMap((ring, j) =>
+    ring.flatMap((a, i) => {
+      const next = (i + 1) % ring.length;
+      const b = ring[next],
+        c = bands[j + 1][i],
+        d = bands[j + 1][next];
+      return [
+        [a, b, c],
+        [c, b, d],
+      ].map((points, k) => ({
+        points,
+        depth: points.reduce((sum, p) => sum + p.z, 0) / 3,
+        seed: i + j * 11 + k * 23,
+        band: j,
+      }));
+    })
+  );
+  for (const side of [0, bands.length - 1]) {
+    const ring = bands[side];
+    const cap = {
+      ...project(0, elevation + stoneBands[side].height * growth, 0),
+      z: 0,
+    };
+    ring.forEach((point, index) => {
+      const other = ring[(index + 1) % ring.length];
+      faces.push({
+        points: [point, other, cap],
+        depth: (point.z + other.z) / 3,
+        seed: 89 + index,
+        band: side,
+      });
+    });
+  }
+  faces.sort((a, b) => a.depth - b.depth);
 
   for (const { points, seed, band } of faces) {
     polygon(ctx, points);
@@ -313,8 +347,14 @@ export function drawStoneHeart(
       ctx.lineWidth = 0.0023;
       ctx.strokeStyle = "#ffae67";
       ctx.beginPath();
-      ctx.moveTo(points[0].x, points[0].y);
-      ctx.lineTo(points[1].x, points[1].y);
+      const [a, b, c] = points;
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(
+        a.x * 0.55 + b.x * 0.3 + c.x * 0.15,
+        a.y * 0.55 + b.y * 0.3 + c.y * 0.15
+      );
+      ctx.lineTo(a.x * 0.25 + b.x * 0.75, a.y * 0.25 + b.y * 0.75);
+      ctx.lineTo(b.x, b.y);
       ctx.stroke();
       ctx.globalAlpha = 1;
     }

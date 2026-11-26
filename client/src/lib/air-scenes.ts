@@ -111,6 +111,8 @@ export function drawWindStep(
 ) {
   const lift = 0.17 * growth + 0.015 * Math.sin(time * 2.2);
   const center = project(0, lift, 0);
+  const floor = project(0, 0.009, 0);
+  ring(ctx, floor, 0.158, 0.047, "#8bc6c4", 0.31);
   const cushion = ctx.createRadialGradient(
     center.x,
     center.y,
@@ -147,12 +149,13 @@ export function drawWindStep(
       time * 0.44 + level
     );
   }
-  ring(ctx, center, 0.233, 0.072, "#ccf8f5", 0.84);
-  ring(ctx, center, 0.187, 0.056, "#b3e2df", 0.63);
+  ring(ctx, center, 0.233, 0.072, "#ccf8f5", 0.63);
+  ring(ctx, center, 0.187, 0.056, "#b3e2df", 0.49);
   for (let i = 0; i < 16; i++) {
     const u = fract(time * 0.46 + i * 0.618);
     const a = i * 2.399 + u * 2.6;
     const r = 0.058 + 0.15 * u;
+    ctx.globalAlpha = Math.sin(Math.PI * u) * 0.89;
     dust(
       ctx,
       project(Math.cos(a) * r, u * lift, Math.sin(a) * r),
@@ -160,6 +163,7 @@ export function drawWindStep(
       "#b8ecebb8"
     );
   }
+  ctx.globalAlpha = 1;
 }
 
 export function drawCyclone(
@@ -324,7 +328,7 @@ export function drawTidalGather(
     center.y + 0.09
   );
   reflection.addColorStop(0, "#96eefb00");
-  reflection.addColorStop(0.54, "#73e0eb96");
+  reflection.addColorStop(0.54, "#73e0eb71");
   reflection.addColorStop(1, "#96eefb00");
   ctx.strokeStyle = reflection;
   ctx.lineWidth = 0.002;
