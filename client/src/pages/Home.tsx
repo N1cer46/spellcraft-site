@@ -4,6 +4,9 @@ import { gsap } from "gsap";
  */
 import { useEffect, useRef, useState } from "react";
 import { Feather, Info, Sparkles } from "lucide-react";
+import ThemeToggle from "@/components/ThemeToggle";
+import AtelierProfile from "@/components/AtelierProfile";
+import type { DrawingPreferences } from "@/lib/mastery-rewards";
 import LearningPanel from "@/components/LearningPanel";
 import GrimoireEntry from "@/components/GrimoireEntry";
 import Grimoire from "@/components/Grimoire";
@@ -18,7 +21,9 @@ import {
   loadPersonalSpells,
   savePersonalSpell,
   deletePersonalSpell,
+  renamePersonalSpell,
 } from "@/lib/personal-grimoire";
+import type { Progress } from "@/lib/learning";
 import type { Recognition } from "@/lib/recognizer";
 
 export default function Home() {
@@ -37,6 +42,7 @@ export default function Home() {
   const [page, setPage] = useState("practice");
   useEffect(() => {
     const sync = () => {
+      setEntryOpen(false);
       const key = location.hash.replace(/^#\//, "");
       setPage(
         ["practice", "grimoire", "learning", "collection"].includes(key)
@@ -48,12 +54,19 @@ export default function Home() {
     window.addEventListener("hashchange", sync);
     return () => window.removeEventListener("hashchange", sync);
   }, []);
+  useEffect(() => {
+    if (page !== "learning") return;
+    document.getElementById("learning-title")?.focus({ preventScroll: true });
+    window.scrollTo({ top: 0, behavior: "instant" });
+  }, [page]);
   const navigate = (key: string) => {
     setPage(key);
     location.hash = "/" + key;
   };
+  const [learningProgress, setLearningProgress] = useState<Progress>();
+  const [drawingPreferences, setDrawingPreferences] = useState<DrawingPreferences>();
   const [practiceKey, setPracticeKey] = useState(0);
-  const [learningTask, setLearningTask] = useState<{ kind: "lesson" | "daily"; recipeId?: string } | null>(null);
+  const [learningTask, setLearningTask] = useState<{ kind: "lesson" | "daily"; recipeId?: string; symbol?: SymbolDefinition } | null>(null);
   const [lastCast, setLastCast] = useState<{
     recipe: SpellRecipe;
     at: number;
@@ -158,8 +171,12 @@ export default function Home() {
             <small>ателье рисованной магии</small>
           </div>
         </div>
-        <div className="topbar-note">
-          <Feather size={15} /> Перо · чернила · немного волшебства
+        <div className="topbar-actions">
+          <div className="topbar-note">
+            <Feather size={15} /> Перо · чернила · немного волшебства
+          </div>
+          <ThemeToggle />
+          <AtelierProfile onApply={setDrawingPreferences} progress={learningProgress} />
         </div>
       </header>
       <nav className="site-tabs" aria-label="Разделы сайта">
@@ -190,12 +207,12 @@ export default function Home() {
             <br />с <em>одной линии.</em>
           </h1>
           <p className="intro-copy">
-            Откройте гримуар. Выберите символы. Замкните круг —
+            Откройте гримуар. Выберите глиф и указатели. Замкните круг —
             <br className="desktop-break" /> и позвольте чернилам ожить.
           </p>
         </div>
         <div className="atelier-illustration" aria-hidden="true">
-          <svg viewBox="0 0 380 220" fill="none">
+          <svg viewBox="0 20 380 180" fill="none">
             <circle cx="200" cy="110" r="85" />
             <circle cx="200" cy="110" r="72" strokeDasharray="2 7" />
             <path
@@ -242,7 +259,7 @@ export default function Home() {
             >
               <i>1</i>
               <span>
-                <strong>Сигил</strong>
+                <strong>Глиф</strong>
                 <small>ядро в центре</small>
               </span>
             </div>
@@ -253,15 +270,15 @@ export default function Home() {
             >
               <i>2</i>
               <span>
-                <strong>Знаки</strong>
-                <small>4 стороны сигила</small>
+                <strong>Указатели</strong>
+                <small>4 стороны глифа</small>
               </span>
             </div>
             <div data-done={active}>
               <i>3</i>
               <span>
-                <strong>Круг</strong>
-                <small>замкните композицию</small>
+                <strong>Сигил</strong>
+                <small>замкните круг</small>
               </span>
             </div>
           </div>
@@ -270,7 +287,7 @@ export default function Home() {
             <p>
               Рисуйте форму в удобном порядке, отрывая руку сколько нужно.
               Близкие штрихи собираются в один символ. Если подходят несколько
-              знаков, выберите нужный вариант.
+              символов, выберите нужный вариант.
             </p>
           </div>
           <div className="identified-list">
@@ -299,6 +316,7 @@ export default function Home() {
         {entryOpen && (
           <GrimoireEntry
             personalSpells={personalSpells}
+            collectionOnly={page === "collection"}
             symbol={selectedSymbol}
             recipe={selectedRecipe}
             backLabel={
@@ -321,8 +339,10 @@ export default function Home() {
           hidden={entryOpen || page !== "practice"}
         >
           <SpellCanvas
+            drawingPreferences={drawingPreferences}
             practiceKey={practiceKey}
             learningTask={learningTask?.kind ?? null}
+            learningSymbol={learningTask?.symbol}
             onSpellCast={recipe => {
               if (learningTask?.kind === "daily" && learningTask.recipeId === recipe.id) setLearningTask(null);
               setLastCast({
@@ -344,6 +364,13 @@ export default function Home() {
           readingSidebar={page !== "practice" && entryOpen}
           collectionOnly={page === "collection"}
           onDeleteRecipe={deleteSpell}
+          onRenameRecipe={(id, name) => {
+            const updated = renamePersonalSpell(window.localStorage, id, name);
+            setPersonalSpells(updated);
+            setSelectedRecipe(current => current?.id === id ? updated.find(recipe => recipe.id === id) ?? current : current);
+            setPracticeRecipe(current => current?.id === id ? updated.find(recipe => recipe.id === id) ?? current : current);
+            setLibraryError("");
+          }}
           personalSpells={personalSpells}
           libraryError={libraryError}
           selectedSymbol={selectedSymbol}
@@ -361,9 +388,12 @@ export default function Home() {
         <LearningPanel
           readings={recognitions}
           cast={lastCast}
+          taskKind={learningTask?.kind ?? null}
+          onResume={backToDrawing}
+          onProgressChange={setLearningProgress}
           onAttemptFinished={() => setLearningTask(null)}
-          onStart={(recipe, kind = "lesson") => {
-            setLearningTask({ kind, recipeId: recipe?.id });
+          onStart={(recipe, kind = "lesson", symbol) => {
+            setLearningTask({ kind, recipeId: recipe?.id, symbol });
             setPracticeRecipe(recipe);
             setPracticeKey(key => key + 1);
             backToDrawing();
@@ -372,12 +402,12 @@ export default function Home() {
       </div>
       <footer className="site-footer">
         <span>
-          <Sparkles size={14} /> Рисуйте один символ за раз; сложные сигилы и
-          знаки можно составлять несколькими близкими штрихами.
+          <Sparkles size={14} /> Рисуйте один символ за раз. Сложные глифы и
+          указатели можно составлять несколькими близкими штрихами.
         </span>
         <span>
-          Нарисуйте сигил и минимум четыре знака вокруг него, замкните круг — и
-          откройте свою формулу. · Неофициальный фан-проект
+          Поместите глиф в центр, добавьте минимум четыре указателя вокруг него и
+          обведите их кругом. Получившийся сигил активирует заклинание. · Неофициальный фан-проект
         </span>
       </footer>
     </div>

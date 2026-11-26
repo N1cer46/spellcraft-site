@@ -1,14 +1,14 @@
 import { allSymbols, byId, spellRecipes } from "../data/spellbook";
 export const PROGRESS_KEY = "spellcraft.learning.v1";
 export const lessons = [
-  { id: "i-fire", stage: 1, title: "Первый сигил", symbolId: "sigil_fire" },
+  { id: "i-fire", stage: 1, title: "Первый глиф", symbolId: "sigil_fire" },
   {
     id: "i-light",
     stage: 1,
     title: "Начертание света",
     symbolId: "sigil_light",
   },
-  { id: "i-column", stage: 1, title: "Первый знак", symbolId: "mark_column" },
+  { id: "i-column", stage: 1, title: "Первый указатель", symbolId: "mark_column" },
   { id: "ii-orb", stage: 2, title: "Сферическая форма", symbolId: "mark_orb" },
   {
     id: "ii-coil",
@@ -166,7 +166,7 @@ export function loadProgress(storage: Pick<Storage, "getItem">): Progress {
 export const masteryRanks = [
   { threshold: 0, title: "Новичок ателье" },
   { threshold: 3, title: "Ученик пера" },
-  { threshold: 8, title: "Знаток знаков" },
+  { threshold: 8, title: "Знаток указателей" },
   { threshold: 15, title: "Составитель формул" },
   { threshold: 25, title: "Мастер печатей" },
   { threshold: 35, title: "Наставник ателье" },

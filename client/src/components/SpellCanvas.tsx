@@ -31,10 +31,13 @@ import {
   type Recognition,
 } from "@/lib/recognizer";
 import { resolveSpell } from "@/lib/spell-engine";
+import { inkColors, papers, type DrawingPreferences } from "@/lib/mastery-rewards";
 import SpellAnimator from "./SpellAnimator";
 
 type Props = {
+  drawingPreferences?: DrawingPreferences;
   practiceKey?: number;
+  learningSymbol?: SymbolDefinition;
   learningTask?: "lesson" | "daily" | null;
   onSpellCast?: (recipe: SpellRecipe) => void;
   onSaveSpell?: (recipe: SpellRecipe) => void;
@@ -48,8 +51,50 @@ type Props = {
 // Keep ink coordinates stable when the viewport rotates or the browser UI resizes.
 const size = { width: 720, height: 720 };
 
+// Lift coordinates can contradict the most recent motion samples. Use them only
+// to shorten a straight terminal overshoot, never to extend or reshape a stroke.
+function trimContactTail(points: InkPoint[], release: InkPoint, logicalPixel: number) {
+  if (points.length < 3) return points;
+  const tolerance = 3 * logicalPixel;
+  const tip = points[points.length - 1];
+  if (Math.hypot(tip.x - release.x, tip.y - release.y) <= tolerance) return points;
+
+  const oldest = Math.max(0, points.length - 5);
+  for (let i = points.length - 2; i >= oldest; i--) {
+    const from = points[i], to = points[i + 1];
+    if (release.t !== undefined && to.t !== undefined && release.t - to.t > 50) break;
+    const dx = to.x - from.x, dy = to.y - from.y;
+    const lengthSquared = dx * dx + dy * dy;
+    if (lengthSquared === 0) continue;
+    const fraction = ((release.x - from.x) * dx + (release.y - from.y) * dy) / lengthSquared;
+    if (fraction < 0 || fraction >= 1 || (i === 0 && fraction === 0)) continue;
+    const cut = { x: from.x + fraction * dx, y: from.y + fraction * dy, t: release.t };
+    if (Math.hypot(cut.x - release.x, cut.y - release.y) > tolerance) continue;
+
+    // Every discarded point must continue in the same direction. In particular,
+    // releasing near an earlier leg of a hook or loop must not erase the bend.
+    const length = Math.sqrt(lengthSquared);
+    let previous = 0;
+    const straightTail = points.slice(i + 1).every(point => {
+      const x = point.x - cut.x, y = point.y - cut.y;
+      const along = (x * dx + y * dy) / length;
+      const across = Math.abs(x * dy - y * dx) / length;
+      if (along < previous || across > tolerance) return false;
+      previous = along;
+      return true;
+    });
+    if (straightTail && previous > tolerance) {
+      const kept = points.slice(0, i + 1);
+      if (fraction > 0) kept.push(cut);
+      return kept;
+    }
+  }
+  return points;
+}
+
 export default function SpellCanvas({
   selectedRecipe,
+  drawingPreferences,
   onRecognitionChange,
   onActivationChange,
   onSaveSpell,
@@ -57,6 +102,7 @@ export default function SpellCanvas({
   savedSpells = [],
   practiceKey = 0,
   learningTask = null,
+  learningSymbol,
   onSpellCast,
 }: Props) {
   const [expanded, setExpanded] = useState(false);
@@ -124,6 +170,11 @@ export default function SpellCanvas({
   widthRef.current = penWidth;
   const [eraser, setEraser] = useState(false);
   const [volume, setVolume] = useState(0);
+  useEffect(() => {
+    if (!drawingPreferences) return;
+    setPenWidth(drawingPreferences.penWidth);
+    setVolume(drawingPreferences.volume);
+  }, [drawingPreferences]);
   const volumeRef = useRef(0);
   volumeRef.current = volume;
   const audioRef = useRef<AudioContext | null>(null);
@@ -207,9 +258,8 @@ export default function SpellCanvas({
   const onRecognitionChangeRef = useRef(onRecognitionChange);
   const finalizeRef = useRef<() => void>(() => {});
   const [strokes, setStrokes] = useState<InkStroke[]>([]);
-  const [activePoints, setActivePoints] = useState<InkPoint[]>([]);
   const [recognitions, setRecognitions] = useState<Recognition[]>([]);
-  const [message, setMessage] = useState("Впишите сигил в центральное поле.");
+  const [message, setMessage] = useState("Нарисуйте глиф в центре листа.");
   const [isProcessing, setIsProcessing] = useState(false);
   const [spellResult, setSpellResult] = useState<{
     recipe: SpellRecipe | null;
@@ -229,10 +279,12 @@ export default function SpellCanvas({
     if (spellResult?.recipe)
       return { label: "Заклинание активно", tone: "active" };
     if (recognitions.some(recognition => recognition.zone === "center"))
-      return { label: "Добавьте знаки", tone: "ready" };
-    return { label: "Рисуется сигил", tone: "idle" };
+      return { label: "Добавьте указатели", tone: "ready" };
+    return { label: "Рисуется глиф", tone: "idle" };
   }, [recognitions, spellResult]);
 
+  const ink = drawingPreferences?.ink ?? "forest";
+  const paper = drawingPreferences?.paper ?? "parchment";
   const redraw = useCallback(
     (completed: InkStroke[], current: InkPoint[] = []) => {
       const canvas = canvasRef.current;
@@ -259,7 +311,7 @@ export default function SpellCanvas({
         context.beginPath();
         context.lineCap = "round";
         context.lineJoin = "round";
-        context.strokeStyle = active ? "#234f43" : "#293e34";
+        context.strokeStyle = active && ink === "forest" ? "#234f43" : inkColors[ink].color;
         context.shadowColor = active ? "rgba(52, 82, 57, .15)" : "transparent";
         context.shadowBlur = active ? 2 : 0;
         context.lineWidth = widthRef.current;
@@ -270,7 +322,7 @@ export default function SpellCanvas({
       completed.forEach(stroke => drawPath(stroke.points));
       drawPath(current, true);
     },
-    []
+    [ink]
   );
 
   useEffect(() => {
@@ -284,8 +336,8 @@ export default function SpellCanvas({
   });
 
   useEffect(() => {
-    redraw(strokes, activePoints);
-  }, [activePoints, redraw, strokes, penWidth]);
+    redraw(strokes, activeRef.current);
+  }, [redraw, strokes, penWidth]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
@@ -307,13 +359,26 @@ export default function SpellCanvas({
     onRecognitionChangeRef.current(next);
   };
 
-  const pointFromEvent = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    const rect = event.currentTarget.getBoundingClientRect();
-    return {
-      x: ((event.clientX - rect.left) * size.width) / rect.width,
-      y: ((event.clientY - rect.top) * size.height) / rect.height,
-      t: performance.now(),
-    };
+  const pointFromContact = (
+    contact: { clientX: number; clientY: number },
+    rect: DOMRect,
+    time: number
+  ): InkPoint => ({
+    x: ((contact.clientX - rect.left) * size.width) / rect.width,
+    y: ((contact.clientY - rect.top) * size.height) / rect.height,
+    t: Number.isFinite(time) ? time : performance.now(),
+  });
+  const pointFromEvent = (event: ReactPointerEvent<HTMLCanvasElement>) =>
+    pointFromContact(event, event.currentTarget.getBoundingClientRect(), event.timeStamp);
+
+  const redrawRef = useRef(redraw);
+  redrawRef.current = redraw;
+  const scheduleInkFrame = () => {
+    if (frameRef.current !== null) return;
+    frameRef.current = requestAnimationFrame(() => {
+      frameRef.current = null;
+      redrawRef.current(strokesRef.current, activeRef.current);
+    });
   };
 
   /** Ends the current stroke and runs recognition. Safe to call from any path (canvas pointerup, a
@@ -323,7 +388,7 @@ export default function SpellCanvas({
     const points = activeRef.current;
     activeRef.current = [];
     touchIdRef.current = null;
-    if (frameRef.current) {
+    if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
@@ -335,8 +400,10 @@ export default function SpellCanvas({
       }
       pointerIdRef.current = null;
     }
-    setActivePoints([]);
-    if (points.length < 2) return;
+    if (points.length < 2) {
+      redrawRef.current(strokesRef.current);
+      return;
+    }
 
     const completed: InkStroke = {
       id: `stroke-${++strokeSequenceRef.current}`,
@@ -345,6 +412,7 @@ export default function SpellCanvas({
     };
     const currentStrokes = [...strokesRef.current, completed];
     updateStrokes(currentStrokes);
+    redrawRef.current(currentStrokes);
 
     const { width, height } = size;
     const otherInk = currentStrokes.filter(
@@ -370,11 +438,11 @@ export default function SpellCanvas({
           recipe: resolution.recipe,
           sigilId: resolution.sigilId,
         });
-        setMessage(`Контур замкнут. «${resolution.recipe.name}» активировано.`);
+        setMessage(`Сигил завершён. «${resolution.recipe.name}» активировано.`);
       } else {
         setMessage(
           resolution.error ??
-            "Контур замкнут, но сигил не распознан. Нарисуйте узнаваемый сигил в центре."
+            "Круг замкнут, но глиф не распознан. Сверьте центральный символ с образцом."
         );
       }
       return;
@@ -396,7 +464,7 @@ export default function SpellCanvas({
       if (revision !== revisionRef.current) return;
       setIsProcessing(false);
       setMessage(
-        "Круг не замкнут: обведите композицию плавным кругом, охватывающим сигил и знаки целиком."
+        "Сигил не завершён: обведите глиф и все указатели одним замкнутым кругом."
       );
       return;
     }
@@ -470,7 +538,7 @@ export default function SpellCanvas({
           ]);
           const parts = cluster.length > 1 ? ` (${cluster.length} штриха)` : "";
           setMessage(
-            `${zone === "center" ? "Сигил" : "Знак"} распознан${parts}: ${symbol.name} — ${Math.round(result.score * 100)}%.`
+            `${zone === "center" ? "Глиф" : "Указатель"} распознан${parts}: ${symbol.name} — ${Math.round(result.score * 100)}%.`
           );
           return;
         }
@@ -519,6 +587,8 @@ export default function SpellCanvas({
     window.addEventListener("blur", onWindowRelease);
     return () => {
       revisionRef.current += 1;
+      if (frameRef.current !== null) cancelAnimationFrame(frameRef.current);
+      frameRef.current = null;
       window.removeEventListener("pointerup", onWindowRelease);
       window.removeEventListener("pointercancel", onWindowRelease);
       window.removeEventListener("blur", onWindowRelease);
@@ -526,7 +596,7 @@ export default function SpellCanvas({
   }, [finalizeStroke]);
 
   const onPointerDown = (event: ReactPointerEvent<HTMLCanvasElement>) => {
-    if (spellResult?.recipe || pointerIdRef.current !== null) return;
+    if (spellResult?.recipe || pointerIdRef.current !== null || touchIdRef.current !== null) return;
     // Only the primary button starts a stroke; right-click must not draw.
     if (event.pointerType === "mouse" && event.button !== 0) return;
     if (eraser) {
@@ -564,12 +634,12 @@ export default function SpellCanvas({
       /* unsupported in synthetic events */
     }
     pointerIdRef.current = event.pointerId;
-    if (frameRef.current) {
+    if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
     activeRef.current = [pointFromEvent(event)];
-    setActivePoints(activeRef.current);
+    scheduleInkFrame();
   };
 
   const onPointerMove = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -582,12 +652,21 @@ export default function SpellCanvas({
       finalizeStroke();
       return;
     }
-    activeRef.current = [...activeRef.current, pointFromEvent(event)];
-    if (frameRef.current) cancelAnimationFrame(frameRef.current);
-    frameRef.current = requestAnimationFrame(() => {
-      frameRef.current = null;
-      setActivePoints([...activeRef.current]);
-    });
+    if (event.pointerType === "pen" && event.buttons === 0 && event.pressure === 0) {
+      finalizeStroke();
+      return;
+    }
+    const rect = event.currentTarget.getBoundingClientRect();
+    const samples = event.nativeEvent?.getCoalescedEvents?.()
+      .filter(sample => sample.timeStamp <= event.timeStamp);
+    if (samples?.length) {
+      for (const sample of samples) {
+        activeRef.current.push(pointFromContact(sample, rect, sample.timeStamp));
+      }
+    } else {
+      activeRef.current.push(pointFromContact(event, rect, event.timeStamp));
+    }
+    scheduleInkFrame();
   };
 
   const onPointerUp = (event: ReactPointerEvent<HTMLCanvasElement>) => {
@@ -596,33 +675,40 @@ export default function SpellCanvas({
     // Touch release coordinates may be extrapolated by the device after contact ends.
     // Commit the last contact sample instead of drawing a synthetic release tail.
     if (event.pointerType === "mouse") {
-      activeRef.current = [...activeRef.current, pointFromEvent(event)];
+      activeRef.current.push(pointFromEvent(event));
+    } else {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const release = pointFromContact(event, rect, event.timeStamp);
+      activeRef.current = trimContactTail(activeRef.current, release, size.width / rect.width);
     }
     return finalizeStroke();
   };
 
-  // Use contact coordinates on touch screens, not the OS-smoothed pointer stream.
+  // Touch coordinates take precedence on browsers delivering both input streams.
   const onTouchStart = (event: ReactTouchEvent<HTMLCanvasElement>) => {
     if (eraser || spellResult?.recipe || touchIdRef.current !== null) return;
     const touch = event.changedTouches[0];
     if (!touch) return;
     touchIdRef.current = touch.identifier;
-    const point = pointFromEvent({ clientX: touch.clientX, clientY: touch.clientY, currentTarget: event.currentTarget } as ReactPointerEvent<HTMLCanvasElement>);
-    activeRef.current = [point];
-    setActivePoints([point]);
+    redoRef.current = [];
+    if (pendingChoice) setPendingChoice(null);
+    activeRef.current = [pointFromContact(touch, event.currentTarget.getBoundingClientRect(), event.timeStamp)];
+    scheduleInkFrame();
   };
   const onTouchMove = (event: ReactTouchEvent<HTMLCanvasElement>) => {
     const touch = Array.from(event.changedTouches).find(t => t.identifier === touchIdRef.current);
     if (!touch) return;
-    activeRef.current = [...activeRef.current, pointFromEvent({ clientX: touch.clientX, clientY: touch.clientY, currentTarget: event.currentTarget } as ReactPointerEvent<HTMLCanvasElement>)];
-    if (!frameRef.current) frameRef.current = requestAnimationFrame(() => {
-      frameRef.current = null;
-      setActivePoints([...activeRef.current]);
-    });
+    activeRef.current.push(pointFromContact(touch, event.currentTarget.getBoundingClientRect(), event.timeStamp));
+    scheduleInkFrame();
   };
   const onTouchEnd = (event: ReactTouchEvent<HTMLCanvasElement>) => {
-    if (!Array.from(event.changedTouches).some(t => t.identifier === touchIdRef.current)) return;
-    touchIdRef.current = null;
+    const touch = Array.from(event.changedTouches).find(t => t.identifier === touchIdRef.current);
+    if (!touch) return;
+    if (event.type !== "touchcancel") {
+      const rect = event.currentTarget.getBoundingClientRect();
+      const release = pointFromContact(touch, rect, event.timeStamp);
+      activeRef.current = trimContactTail(activeRef.current, release, size.width / rect.width);
+    }
     return finalizeStroke();
   };
 
@@ -650,13 +736,13 @@ export default function SpellCanvas({
 
   // Explicit undo/reset may discard ink; browser cancellation must preserve it.
   const discardActiveStroke = () => {
-    if (frameRef.current) {
+    if (frameRef.current !== null) {
       cancelAnimationFrame(frameRef.current);
       frameRef.current = null;
     }
     activeRef.current = [];
+    touchIdRef.current = null;
     pointerIdRef.current = null;
-    setActivePoints([]);
   };
 
   const commitChoice = (candidate: SymbolDefinition, score: number) => {
@@ -676,7 +762,7 @@ export default function SpellCanvas({
     ]);
     setPendingChoice(null);
     setMessage(
-      `${pendingChoice.zone === "center" ? "Сигил" : "Знак"} подтверждён: ${candidate.name} — ${Math.round(score * 100)}%.`
+      `${pendingChoice.zone === "center" ? "Глиф" : "Указатель"} подтверждён: ${candidate.name} — ${Math.round(score * 100)}%.`
     );
   };
 
@@ -727,7 +813,7 @@ export default function SpellCanvas({
     setSpellResult(null);
     setSaveError("");
     setPendingChoice(null);
-    setMessage("Чистый лист готов. Начните с сигила в центре.");
+    setMessage("Чистый лист готов. Начните с глифа в центре.");
   };
 
   useEffect(() => {
@@ -737,6 +823,7 @@ export default function SpellCanvas({
   /** Guides drawn under the user's ink: the full formula of a picked spell (sigil in the centre, required marks distributed around the ring). */
   const guides = useMemo(() => {
     if (spellResult?.recipe) return [];
+    if (learningSymbol) return [{ symbol: learningSymbol, angle: -90 }];
     if (selectedRecipe) {
       const guideIds = [...selectedRecipe.requiredMarkIds];
       while (guideIds.length > 0 && guideIds.length < 4)
@@ -761,7 +848,7 @@ export default function SpellCanvas({
       return formula;
     }
     return [];
-  }, [selectedRecipe, spellResult]);
+  }, [selectedRecipe, spellResult, learningSymbol]);
   return (
     <section ref={shellRef} className="canvas-shell" data-expanded={expanded} data-tools-open={expandedTools}
       role={expanded ? "dialog" : undefined}
@@ -854,7 +941,9 @@ export default function SpellCanvas({
           </button>
         </div></div>
       </div>
-      <div className="canvas-stage" data-active={Boolean(spellResult?.recipe)}>
+      <div className="canvas-stage"
+        style={paper === "parchment" ? undefined : { background: `radial-gradient(ellipse at 25% 20%, ${papers[paper].light}, ${papers[paper].shade})` }}
+        data-grid={drawingPreferences?.showGrid !== false} data-active={Boolean(spellResult?.recipe)}>
         <div className="orbital-grid" aria-hidden="true" />
         <div className="axis axis-x" aria-hidden="true" />
         <div className="axis axis-y" aria-hidden="true" />
@@ -912,10 +1001,10 @@ export default function SpellCanvas({
           aria-label="Холст для рисования заклинания"
         />
         <div className="stage-caption left">
-          <CircleDot size={14} /> Центр: сигил
+          <CircleDot size={14} /> Центр: глиф
         </div>
         <div className="stage-caption right">
-          Кольцо: знаки <Check size={14} />
+          Вокруг: указатели <Check size={14} />
         </div>
       </div>
       {spellResult?.recipe?.custom && (

@@ -194,7 +194,7 @@ export function composeSpell(
     sigilId,
     requiredMarkIds: ids,
     custom: true,
-    description: `Основа — ${sigil.name.toLocaleLowerCase()}. Форма проявления: ${form.toLocaleLowerCase()}. ${motion} ${interactions.join(" ")} ${names.length ? names.map(s => `«${s.name}»: ${s.description}`).join(" ") : "Чистое проявление сигила без модификаторов."}${shapes.filter(([id]) => has(id)).length > 1 ? " При нескольких знаках формы основную геометрию задаёт первый по приоритету: сфера, колонна, спираль, дождь, купол, завеса, кристалл, клинки; движение и размножение применяются поверх формы." : ""}`,
+    description: `Глиф — ${sigil.name.toLocaleLowerCase()}. Форма проявления: ${form.toLocaleLowerCase()}. ${motion} ${interactions.join(" ")} ${names.length ? names.map(s => `«${s.name}»: ${s.description}`).join(" ") : "Чистое проявление глифа без указателей."}${shapes.filter(([id]) => has(id)).length > 1 ? " При нескольких указателях формы основную геометрию задаёт первый по приоритету: сфера, колонна, спираль, дождь, купол, завеса, кристалл, клинки; движение и размножение применяются поверх формы." : ""}`,
     effect,
   };
 }

@@ -108,9 +108,22 @@ temp/
 # Webdev artifacts (checkpoint zips, migrations, etc.)
 .webdev/
 
-# Manus version file (auto-generated, not part of source)
-client/public/__manus__/version.json
+# Local Manus tooling
+/client/public/__manus__/
 .project-config.json
+
+# Local references and project notes
+/.gitkeep
+/template.json
+/pnpm-workspace.yaml
+/asset-findings.md
+/ideas.md
+/spellcraft-tech-spec.md
+/Справочник_сигилов_и_знаков.md
+/части заклинани*/
+/docs/interface-review.md
+/docs/redesign-brief.md
+/skills for codex/
 
 # Local assistant/runtime files
 .manus-logs/

@@ -58,7 +58,7 @@ test("animation continues until cancelled, reduced motion is still, and resizing
               assert.ok(Number.isFinite(arg), String(key));
           if (key === "drawImage" || key === "stroke" || key === "fill")
             draws++;
-          if (key === "createRadialGradient") return gradient;
+          if (key === "createRadialGradient" || key === "createLinearGradient") return gradient;
         },
       set: () => true,
     }

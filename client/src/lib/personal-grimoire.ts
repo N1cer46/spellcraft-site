@@ -41,3 +41,16 @@ export function deletePersonalSpell(storage:StorageAccess,id:string):SpellRecipe
  storage.setItem(KEY,JSON.stringify(next.map(item=>({sigilId:item.sigilId,markIds:item.requiredMarkIds,name:item.name}))));
  return next;
 }
+
+export function renamePersonalSpell(storage: StorageAccess, id: string, value: string): SpellRecipe[] {
+  const name = spellName(value);
+  const current = loadPersonalSpells(storage);
+  if (!current.some(recipe => recipe.id === id)) throw new Error("Эта формула больше не сохранена.");
+  const next = current.map(recipe => recipe.id === id ? { ...recipe, name } : recipe);
+  storage.setItem(KEY, JSON.stringify(next.map(recipe => ({
+    sigilId: recipe.sigilId,
+    markIds: recipe.requiredMarkIds,
+    name: recipe.name,
+  }))));
+  return next;
+}

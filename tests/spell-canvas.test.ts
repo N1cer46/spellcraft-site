@@ -4,6 +4,7 @@ import { readFileSync } from "node:fs";
 import ts from "typescript";
 import * as recognizer from "../client/src/lib/recognizer";
 import * as spellbook from "../client/src/data/spellbook";
+import * as masteryRewards from "../client/src/lib/mastery-rewards";
 import * as engine from "../client/src/lib/spell-engine";
 import { setReferenceTemplatesForTests } from "../client/src/data/reference-templates";
 
@@ -41,6 +42,7 @@ function canvasHarness(
     "@/data/spellbook": spellbook,
     "@/lib/recognizer": { ...recognizer, recognizeSymbol: recognize },
     "@/lib/spell-engine": engine,
+    "@/lib/mastery-rewards": masteryRewards,
     "./SpellAnimator": { default: () => null },
   };
   const source = ts.transpileModule(
@@ -579,4 +581,55 @@ test("expanding the sheet preserves ink and undo history across viewport changes
   harness.resize(720);
   await harness.draw([{ x: 321, y: 321 }, { x: 330, y: 340 }]);
   assert.deepEqual(seen[0], original[0]);
+});
+
+test("touch lift trims a recent straight overshoot without shortening a bend or cancelled stroke", async () => {
+  const cases = [
+    { points: [[50, 60], [70, 60], [95, 60], [130, 60]], lift: [90, 61], expected: [[50, 60], [70, 60], [90, 60]] },
+    { points: [[50, 60], [53, 60], [60, 60]], lift: [55, 60], expected: [[50, 60], [53, 60], [55, 60]] },
+    { points: [[50, 60], [70, 60], [95, 60], [95, 80]], lift: [90, 61], expected: [[50, 60], [70, 60], [95, 60], [95, 80]] },
+    { points: [[50, 60], [70, 60], [95, 60]], lift: [80, 60], cancelled: true, expected: [[50, 60], [70, 60], [95, 60]] },
+    { points: [[50, 60], [70, 60], [95, 60]], lift: [70, 60], paused: true, expected: [[50, 60], [70, 60], [95, 60]] },
+  ];
+  for (const scenario of cases) {
+    let seen: recognizer.InkStroke[] = [];
+    const harness = canvasHarness(async strokes => { seen = strokes; return null; });
+    const props = harness.find("canvas").props;
+    const currentTarget = {
+      getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 360 }),
+    };
+    const touch = ([clientX, clientY]: number[], timeStamp: number, type: string) => ({
+      currentTarget, timeStamp, type,
+      changedTouches: [{ identifier: 1, clientX, clientY }],
+    });
+    props.onTouchStart(touch(scenario.points[0], 100, "touchstart"));
+    scenario.points.slice(1).forEach((point, index) => props.onTouchMove(touch(point, 110 + index * 10, "touchmove")));
+    const type = scenario.cancelled ? "touchcancel" : "touchend";
+    await props[scenario.cancelled ? "onTouchCancel" : "onTouchEnd"](touch(scenario.lift, scenario.paused ? 240 : 135, type));
+    props.onTouchMove(touch([190, 60], 250, "touchmove"));
+    assert.deepEqual(seen[0].points.map(point => [point.x / 2, point.y / 2]), scenario.expected, type);
+    assert.equal(seen.length, 1);
+  }
+});
+
+test("pen uses measured coalesced points instead of the shifted dispatched position", async () => {
+  let seen: recognizer.InkStroke[] = [];
+  const harness = canvasHarness(async strokes => { seen = strokes; return null; });
+  const props = harness.find("canvas").props;
+  const currentTarget = {
+    getBoundingClientRect: () => ({ left: 0, top: 0, width: 360, height: 360 }),
+    setPointerCapture() {},
+  };
+  const pen = { pointerId: 1, pointerType: "pen", button: 0, buttons: 1, pressure: .5, clientX: 50, clientY: 50, currentTarget, timeStamp: 100 };
+  props.onPointerDown(pen);
+  props.onPointerMove({
+    ...pen, clientX: 130, timeStamp: 120,
+    nativeEvent: { getCoalescedEvents: () => [
+      { clientX: 70, clientY: 50, timeStamp: 110 },
+      { clientX: 90, clientY: 50, timeStamp: 117 },
+      { clientX: 150, clientY: 50, timeStamp: 125 },
+    ] },
+  });
+  await props.onPointerUp({ ...pen, clientX: 150, timeStamp: 122, buttons: 0, pressure: 0 });
+  assert.deepEqual(seen[0].points.map(point => point.x / 2), [50, 70, 90]);
 });

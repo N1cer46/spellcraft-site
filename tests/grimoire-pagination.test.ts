@@ -2,6 +2,7 @@ import {test} from 'node:test';
 import assert from 'node:assert/strict';
 import {readFileSync} from 'node:fs';
 import ts from 'typescript';
+import {grimoireFieldNotes,grimoireLore} from '../client/src/data/grimoire-lore';
 import * as spellbook from '../client/src/data/spellbook';
 
 test('entry pagination stays in its category, stops at boundaries and has only one return button',()=>{
@@ -11,6 +12,7 @@ test('entry pagination stays in its category, stops at boundaries and has only o
   'react/jsx-runtime':{jsx,jsxs:jsx},'lucide-react':{},
   '@/data/spellbook':{...spellbook,symbolImage:()=>'/symbol.svg'},
   '@/data/reference-templates':{},
+  '@/data/grimoire-lore':{grimoireFieldNotes,grimoireLore},
  };
  const source=ts.transpileModule(readFileSync('client/src/components/GrimoireEntry.tsx','utf8'),{compilerOptions:{module:ts.ModuleKind.CommonJS,jsx:ts.JsxEmit.ReactJSX,target:ts.ScriptTarget.ES2022}}).outputText;
  const module={exports:{} as any};
@@ -41,4 +43,12 @@ test('entry pagination stays in its category, stops at boundaries and has only o
   }
   assert.equal(backCount,3);
  }
+});
+
+test('each catalogue entry has its own lore',()=>{
+ const ids=[...spellbook.allSymbols,...spellbook.spellRecipes].map(entry=>entry.id);
+ assert.deepEqual(Object.keys(grimoireLore).sort(),ids.sort());
+ assert.equal(new Set(Object.values(grimoireLore)).size,ids.length);
+ assert.deepEqual(Object.keys(grimoireFieldNotes).sort(),ids);
+ assert.ok(Object.values(grimoireFieldNotes).every(notes=>notes?.length===2 && notes.every(note=>note.trim())));
 });

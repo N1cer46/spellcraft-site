@@ -1,10 +1,12 @@
 /**
  * Design system: a green-bound grimoire with paper reference notes.
  */
-import { useEffect, useMemo, useState } from "react";
-import { BookOpen, Search } from "lucide-react";
+import { useEffect, useRef, useState } from "react";
+import * as Dialog from "@radix-ui/react-dialog";
+import { ArrowUpRight, BookOpen, Bookmark, Pencil, Search, Star } from "lucide-react";
 import {
   allSymbols,
+  byId,
   spellRecipes,
   symbolImage,
   type SpellRecipe,
@@ -13,11 +15,15 @@ import {
 
 import { loadReferenceTemplates } from "@/data/reference-templates";
 
+const collator = new Intl.Collator("ru", { sensitivity: "base" });
+const normalizeSearch = (value: string) => value.toLocaleLowerCase("ru").replaceAll("ё", "е").trim();
+
 type Props = {
   compact?: boolean;
   readingSidebar?: boolean;
   collectionOnly?: boolean;
   onDeleteRecipe?: (id: string) => void;
+  onRenameRecipe?: (id: string, name: string) => void;
   personalSpells?: SpellRecipe[];
   libraryError?: string;
   selectedSymbol: SymbolDefinition | null;
@@ -36,10 +42,30 @@ export default function Grimoire({
   personalSpells = [],
   libraryError,
   onDeleteRecipe,
+  onRenameRecipe,
   collectionOnly = false,
   compact = false,
   readingSidebar = false,
 }: Props) {
+  const catalogue = compact && !readingSidebar;
+  const panel = useRef<HTMLElement>(null);
+  const lastOpened = useRef<string | null>(null);
+  const editTrigger = useRef<HTMLButtonElement>(null);
+  const [editing, setEditing] = useState<{ id: string; name: string } | null>(null);
+  const [renameError, setRenameError] = useState("");
+  const rename = (recipe: SpellRecipe, trigger: HTMLButtonElement) => {
+    editTrigger.current = trigger;
+    setRenameError("");
+    setEditing({ id: recipe.id, name: recipe.name });
+  };
+  useEffect(() => {
+    if (!catalogue || !lastOpened.current) return;
+    const button = Array.from(panel.current?.querySelectorAll<HTMLButtonElement>("[data-catalogue-entry]") ?? [])
+      .find(item => item.dataset.catalogueEntry === lastOpened.current);
+    lastOpened.current = null;
+    button?.focus({ preventScroll: true });
+    button?.scrollIntoView({ block: "nearest" });
+  }, [catalogue]);
   const allRecipes = collectionOnly
     ? personalSpells
     : [...spellRecipes, ...personalSpells];
@@ -59,15 +85,34 @@ export default function Grimoire({
     };
   }, []);
   const [mode, setMode] = useState<"symbols" | "spells">("symbols");
-  useEffect(() => {
-    if (collectionOnly) setMode("spells");
-  }, [collectionOnly]);
   const [kind, setKind] = useState<"all" | "sigil" | "mark">("all");
   const [search, setSearch] = useState("");
   const [favorites, setFavorites] = useState<string[]>([]);
   const [onlyFavorites, setOnlyFavorites] = useState(false);
   const [material, setMaterial] = useState("");
   const [complexity, setComplexity] = useState("");
+  const [group, setGroup] = useState("");
+  const [drawableOnly, setDrawableOnly] = useState(false);
+  const [alphabetical, setAlphabetical] = useState(false);
+  const showSpells = collectionOnly || mode === "spells";
+  const searchWords = normalizeSearch(search).split(/\s+/).filter(Boolean);
+  const matches = (text: string) => {
+    const normalized = normalizeSearch(text);
+    return searchWords.every(word => normalized.includes(word));
+  };
+  const isDrawable = (entry: SymbolDefinition | SpellRecipe) => available
+    ? ("kind" in entry ? available.has(entry.id) : [entry.sigilId, ...entry.requiredMarkIds].every(id => available.has(id)))
+    : null;
+  const resetFilters = () => {
+    setSearch("");
+    setOnlyFavorites(false);
+    setMaterial("");
+    setComplexity("");
+    setGroup("");
+    setDrawableOnly(false);
+  };
+  const scope = collectionOnly ? "collection" : compact ? "grimoire" : "practice";
+  useEffect(resetFilters, [scope]);
   useEffect(() => {
     try {
       const data = JSON.parse(
@@ -90,25 +135,19 @@ export default function Grimoire({
     r =>
       (!onlyFavorites || favorites.includes(r.id)) &&
       (!material || r.sigilId === material) &&
-      (!complexity ||
+      (catalogue || !complexity ||
         (complexity === "basic"
           ? r.requiredMarkIds.length <= 4
           : r.requiredMarkIds.length > 4)) &&
-      (r.name + " " + r.description)
-        .toLocaleLowerCase()
-        .includes(search.toLocaleLowerCase())
+      (!catalogue || !drawableOnly || isDrawable(r)) &&
+      matches([r.name, r.description, ...[r.sigilId, ...r.requiredMarkIds, ...(r.optionalMarkIds ?? [])].map(id => byId(id)?.name)].join(" "))
   );
-  const symbols = useMemo(
-    () =>
-      allSymbols.filter(
-        symbol =>
-          (!onlyFavorites || favorites.includes(symbol.id)) &&
-          (kind === "all" || symbol.kind === kind) &&
-          `${symbol.name} ${symbol.group} ${symbol.description}`
-            .toLocaleLowerCase()
-            .includes(search.toLocaleLowerCase())
-      ),
-    [kind, search, onlyFavorites, favorites]
+  const symbols = allSymbols.filter(symbol =>
+    (!onlyFavorites || favorites.includes(symbol.id)) &&
+    (kind === "all" ? !catalogue || symbol.kind === "sigil" : symbol.kind === kind) &&
+    (!catalogue || !group || symbol.group === group) &&
+    (!catalogue || !drawableOnly || isDrawable(symbol)) &&
+    matches(`${symbol.name} ${symbol.group} ${symbol.description}`)
   );
   const showSymbol = (symbol: SymbolDefinition) => {
     onSelectRecipe(null);
@@ -118,6 +157,202 @@ export default function Grimoire({
     onSelectSymbol(null);
     onSelectRecipe(recipe);
   };
+
+  if (catalogue) {
+    const results: (SymbolDefinition | SpellRecipe)[] = showSpells ? recipes : symbols;
+    if (alphabetical) results.sort((a, b) => collator.compare(a.name, b.name));
+    else if (collectionOnly) results.reverse();
+    const availableGroups = Array.from(new Set(allSymbols
+      .filter(symbol => symbol.kind === (kind === "all" ? "sigil" : kind))
+      .map(symbol => symbol.group)));
+    const materials = Array.from(new Set(allRecipes.map(recipe => recipe.sigilId)))
+      .map(byId)
+      .filter((symbol): symbol is SymbolDefinition => Boolean(symbol))
+      .sort((a, b) => collator.compare(a.name, b.name));
+    const selectSection = (section: "sigil" | "mark" | "spells") => {
+      setMode(section === "spells" ? "spells" : "symbols");
+      if (section !== "spells") setKind(section);
+      setGroup("");
+      setMaterial("");
+      setComplexity("");
+    };
+    const activeSection = showSpells ? "spells" : kind;
+    const hasFilters = Boolean(search || onlyFavorites || (showSpells ? material : group) || drawableOnly);
+
+    return (
+      <section ref={panel} className="grimoire-panel grimoire-catalogue" data-collection={collectionOnly} data-compact="true" aria-labelledby="catalogue-title">
+        <header className="catalogue-header">
+          <div>
+            <h2 id="catalogue-title">{collectionOnly ? "Моя коллекция" : "Гримуар"}</h2>
+            <p>{collectionOnly ? "Авторские печати, которые вы сохранили после активации." : "Истории глифов, свойства указателей и готовые сигилы для листа практики."}</p>
+          </div>
+          {collectionOnly ? <Bookmark size={30} aria-hidden="true" /> : <BookOpen size={32} aria-hidden="true" />}
+        </header>
+        {libraryError && <p role="alert">{libraryError}</p>}
+        {!collectionOnly && (
+          <div className="catalogue-sections" role="group" aria-label="Разделы гримуара">
+            {(["sigil", "mark", "spells"] as const).map(section => (
+              <button key={section} type="button"
+                aria-pressed={(activeSection === "all" ? "sigil" : activeSection) === section}
+                onClick={() => selectSection(section)}>
+                {section === "sigil" ? "Глифы" : section === "mark" ? "Указатели" : "Сигилы"}
+                <span>{section === "spells" ? allRecipes.length : allSymbols.filter(symbol => symbol.kind === section).length}</span>
+              </button>
+            ))}
+          </div>
+        )}
+        {collectionOnly && personalSpells.length > 0 && (
+          <dl className="collection-totals">
+            <div><dt>Формул сохранено</dt><dd>{personalSpells.length}</dd></div>
+            <div><dt>В избранном</dt><dd>{personalSpells.filter(recipe => favorites.includes(recipe.id)).length}</dd></div>
+          </dl>
+        )}
+        {(!collectionOnly || personalSpells.length > 0) && <>
+        <div className="catalogue-controls">
+          <label className="search-box">
+            <Search size={18} aria-hidden="true" />
+            <input aria-label="Поиск по гримуару" type="search" value={search}
+              placeholder={showSpells ? "Название, эффект или символ" : "Название, группа или свойство"}
+              onChange={event => setSearch(event.target.value)} />
+          </label>
+          <div className="catalogue-selects">
+            {showSpells ? (
+              <select aria-label="Материал" value={material} onChange={event => setMaterial(event.target.value)}>
+                <option value="">Все материалы</option>
+                {materials.map(symbol => <option key={symbol.id} value={symbol.id}>{symbol.name}</option>)}
+              </select>
+            ) : (
+              <select aria-label="Группа символов" value={group} onChange={event => setGroup(event.target.value)}>
+                <option value="">Все группы</option>
+                {availableGroups.map(item => <option key={item} value={item}>{item}</option>)}
+              </select>
+            )}
+            <select aria-label="Сортировка" value={alphabetical ? "name" : "catalogue"} onChange={event => setAlphabetical(event.target.value === "name")}>
+              <option value="catalogue">{collectionOnly ? "Сначала недавние" : "По порядку в гримуаре"}</option>
+              <option value="name">По алфавиту</option>
+            </select>
+          </div>
+          <div className="catalogue-filters">
+            <label><input type="checkbox" checked={onlyFavorites} onChange={event => setOnlyFavorites(event.target.checked)} /> Избранное</label>
+            <label><input type="checkbox" checked={drawableOnly} disabled={!available} onChange={event => setDrawableOnly(event.target.checked)} /> С образцами распознавания</label>
+            {hasFilters && <button className="catalogue-reset" type="button" onClick={resetFilters}>Сбросить фильтры</button>}
+          </div>
+        </div>
+        <p className="catalogue-count" role="status">Найдено записей: {results.length}</p>
+        </>}
+        {results.length ? (
+          <ul className="catalogue-grid">
+            {results.map(entry => {
+              const symbol = "kind" in entry ? entry : byId(entry.sigilId);
+              const recipe = "sigilId" in entry ? entry : null;
+              const saved = favorites.includes(entry.id);
+              const drawable = isDrawable(entry);
+              return (
+                <li className="catalogue-card" key={entry.id}>
+                  <button type="button" className="catalogue-open" data-catalogue-entry={entry.id}
+                    onClick={() => {
+                      lastOpened.current = entry.id;
+                      if ("kind" in entry) showSymbol(entry);
+                      else showRecipe(entry);
+                    }}>
+                    {symbol && <span className="catalogue-seal"><img src={symbolImage(symbol)} alt="" loading="lazy" /></span>}
+                    <span className="catalogue-copy">
+                      <span className="catalogue-category">{recipe ? (recipe.custom && !collectionOnly ? "Личная формула" : symbol?.name) : symbol?.group}</span>
+                      <strong>{entry.name}</strong>
+                      <span>{recipe?.custom ? entry.description.split(". ").slice(0, collectionOnly ? 2 : 1).join(". ") : entry.description}</span>
+                      {recipe && <span className="catalogue-ingredients">
+                        {recipe.requiredMarkIds.map(id => byId(id)?.name).join(" · ")}
+                      </span>}
+                    </span>
+                    <ArrowUpRight aria-hidden="true" size={16} className="catalogue-open-icon" />
+                  </button>
+                  {collectionOnly && recipe && (
+                    <div className="collection-marks" aria-hidden="true">
+                      {recipe.requiredMarkIds.slice(0, 5).map(id => {
+                        const mark = byId(id);
+                        return mark && <span key={id} title={mark.name}><img src={symbolImage(mark)} alt="" loading="lazy" /></span>;
+                      })}
+                      {recipe.requiredMarkIds.length > 5 && <span>+{recipe.requiredMarkIds.length - 5}</span>}
+                    </div>
+                  )}
+                  <div className="catalogue-card-foot">
+                    <div>
+                      {recipe && <span>Указателей: {recipe.requiredMarkIds.length}</span>}
+                      {drawable === false && <span>Нет образцов</span>}
+                      {recipe && drawable !== false && (
+                        <button type="button" className="catalogue-template" aria-label={`Разместить шаблон: ${recipe.name}`}
+                          onClick={() => onPlaceRecipe(recipe)}>На лист практики</button>
+                      )}
+                    </div>
+                    {collectionOnly && recipe && onRenameRecipe && (
+                      <button type="button" className="collection-edit" title="Переименовать"
+                        aria-label={`Переименовать: ${entry.name}`}
+                        onClick={event => rename(recipe, event.currentTarget)}>
+                        <Pencil size={17} aria-hidden="true" />
+                      </button>
+                    )}
+                    <button type="button" className="catalogue-favorite" aria-pressed={saved}
+                      aria-label={`${saved ? "Убрать из избранного" : "В избранное"}: ${entry.name}`}
+                      onClick={() => favorite(entry.id)}>
+                      <Star size={19} fill={saved ? "currentColor" : "none"} aria-hidden="true" />
+                    </button>
+                  </div>
+                </li>
+              );
+            })}
+          </ul>
+        ) : (
+          <div className="catalogue-empty">
+            <h3>{collectionOnly && !personalSpells.length ? "Коллекция пока пуста" : "Подходящих записей нет"}</h3>
+            <p>{collectionOnly && !personalSpells.length
+              ? "Создайте свою формулу на листе практики и сохраните её после активации."
+              : "Попробуйте другой запрос или снимите фильтры."}</p>
+            {collectionOnly && !personalSpells.length && (
+              <ol className="collection-steps">
+                <li>Нарисуйте глиф в центре и указатели на четырёх сторонах.</li>
+                <li>Обведите символы замкнутым кругом, чтобы завершить сигил и активировать заклинание.</li>
+                <li>Дайте ей имя и сохраните в личный гримуар.</li>
+              </ol>
+            )}
+            {collectionOnly && !personalSpells.length && <a className="collection-start" href="#/practice">Открыть лист практики</a>}
+          </div>
+        )}
+        <Dialog.Root open={Boolean(editing)} onOpenChange={open => { if (!open) setEditing(null); }}>
+          <Dialog.Portal>
+            <Dialog.Overlay className="atelier-profile-overlay" />
+            <Dialog.Content className="atelier-profile-dialog" onCloseAutoFocus={event => {
+              event.preventDefault();
+              editTrigger.current?.focus();
+            }}>
+              <Dialog.Title>Название формулы</Dialog.Title>
+              <Dialog.Description>Изменится имя записи. Состав печати останется прежним.</Dialog.Description>
+              <form onSubmit={event => {
+                event.preventDefault();
+                if (!editing) return;
+                try {
+                  onRenameRecipe?.(editing.id, editing.name);
+                  setEditing(null);
+                } catch (error) {
+                  setRenameError(error instanceof Error ? error.message : "Не удалось переименовать формулу.");
+                }
+              }}>
+                <label className="atelier-profile-name">
+                  Название
+                  <input required maxLength={80} value={editing?.name ?? ""}
+                    onChange={event => { if (editing) setEditing({ ...editing, name: event.target.value }); }} />
+                </label>
+                {renameError && <p role="alert">{renameError}</p>}
+                <div className="atelier-profile-actions">
+                  <Dialog.Close type="button">Отмена</Dialog.Close>
+                  <button type="submit" disabled={!editing?.name.trim()}>Сохранить имя</button>
+                </div>
+              </form>
+            </Dialog.Content>
+          </Dialog.Portal>
+        </Dialog.Root>
+      </section>
+    );
+  }
 
   return (
     <aside className="grimoire-panel" data-compact={compact} data-reading-sidebar={readingSidebar}>
@@ -147,7 +382,7 @@ export default function Grimoire({
           onClick={() => setMode("spells")}
           data-active={mode === "spells"}
         >
-          Заклинания <span>{recipes.length}</span>
+          Сигилы <span>{recipes.length}</span>
         </button>
       </div>
       <label className="search-box">
@@ -191,7 +426,7 @@ export default function Grimoire({
             onChange={e => setComplexity(e.target.value)}
           >
             <option value="">Любая сложность</option>
-            <option value="basic">До четырёх знаков</option>
+            <option value="basic">До четырёх указателей</option>
             <option value="advanced">Больше четырёх</option>
           </select>
         </div>
@@ -211,14 +446,14 @@ export default function Grimoire({
               onClick={() => setKind("sigil")}
               data-active={kind === "sigil"}
             >
-              Сигилы
+              Глифы
             </button>
             <button
               type="button"
               onClick={() => setKind("mark")}
               data-active={kind === "mark"}
             >
-              Знаки
+              Указатели
             </button>
           </div>
           <div className="symbol-list">
@@ -289,7 +524,7 @@ export default function Grimoire({
             <p className="empty-reading">
               {collectionOnly && !personalSpells.length
                 ? "Пока нет сохранённых заклинаний."
-                : "Заклинания не найдены. Попробуйте другое название или фильтр."}
+                : "Сигилы не найдены. Попробуйте другое название или фильтр."}
             </p>
           )}
           {recipes.map(recipe => (

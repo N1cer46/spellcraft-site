@@ -144,8 +144,8 @@ async function load() {
 function renderList() {
   const readyTotal = symbols.filter((s) => count(s.id) >= 5).length;
   const groups = [
-    { kind: "sigil", title: "Сигилы" },
-    { kind: "mark", title: "Знаки" },
+    { kind: "sigil", title: "Глифы" },
+    { kind: "mark", title: "Указатели" },
   ];
   $("list").innerHTML = groups.map((group) => {
     const items = symbols.filter((s) => s.kind === group.kind);
@@ -179,7 +179,7 @@ function selectSymbol(id) {
 function renderHead() {
   const symbol = selected();
   if (!symbol) return;
-  $("meta").textContent = (symbol.kind === "sigil" ? "Сигил" : "Знак") + " · " + symbol.group;
+  $("meta").textContent = (symbol.kind === "sigil" ? "Глиф" : "Указатель") + " · " + symbol.group;
   $("name").textContent = symbol.name;
   $("desc").textContent = symbol.description;
   $("guide").src = symbol.image;

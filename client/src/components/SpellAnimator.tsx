@@ -1,14 +1,15 @@
 /**
  * Design system: «Обсерватория линий» — the activation overlay. It lifts the drawn circle off the
  * page, tilts it down into a 3D "floor" (CSS perspective, so the sigil and marks stay legible), and
- * plays a procedural particle animation above it that embodies the resolved spell.
+ * plays authored WebGL effects (or procedural particles) above the resolved spell.
  */
-import { useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type CSSProperties } from "react";
 import { RotateCcw, Sparkles } from "lucide-react";
 import { byId, type SpellRecipe } from "@/data/spellbook";
 import type { InkStroke } from "@/lib/recognizer";
 import { SPELL_PLANE } from "@/lib/spell-projection";
-import { getSpellFx, startSpellFx } from "@/lib/spell-fx";
+import { getSpellFx } from "@/lib/spell-fx";
+import SpellEffects from "./SpellEffects";
 
 type Props = {
   recipe: SpellRecipe;
@@ -84,13 +85,13 @@ function renderCircleTexture(strokes: InkStroke[], size: Props["size"]) {
 }
 
 export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }: Props) {
-  const fxCanvasRef = useRef<HTMLCanvasElement | null>(null);
   const sigil = byId(sigilId);
   const fx = useMemo(() => (sigil ? getSpellFx(recipe, sigil) : null), [recipe, sigil]);
   const [reduced, setReduced] = useState(() => window.matchMedia("(prefers-reduced-motion: reduce)").matches);
   const [paused, setPaused] = useState(false);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
+  const isPaused = useCallback(() => pausedRef.current, []);
   useEffect(() => {
     const media = window.matchMedia("(prefers-reduced-motion: reduce)");
     const sync = () => setReduced(media.matches);
@@ -98,12 +99,6 @@ export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }
     return () => media.removeEventListener("change", sync);
   }, []);
   const texture = useMemo(() => renderCircleTexture(strokes, size), [strokes, size]);
-
-  useEffect(() => {
-    if (!fx || !fxCanvasRef.current) return;
-    const stop = startSpellFx(fxCanvasRef.current, fx, reduced, () => pausedRef.current);
-    return stop;
-  }, [fx, reduced]);
 
   return (
     <div
@@ -124,7 +119,7 @@ export default function SpellAnimator({ recipe, sigilId, strokes, size, onDone }
             style={reduced ? { animation: "none", transform: "rotateX(var(--fx-plane-tilt))" } : undefined}
           />
         </div>
-        <canvas className="fx-particles" ref={fxCanvasRef} aria-hidden="true" />
+        {fx && <SpellEffects fx={fx} reduced={reduced} isPaused={isPaused} />}
         <div className="fx-caption">
           <span><Sparkles size={14} /> Активировано</span>
           <strong>{recipe.name}</strong>

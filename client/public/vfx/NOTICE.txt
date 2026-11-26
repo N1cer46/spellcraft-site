@@ -1,0 +1,19 @@
+Effekseer for WebGL 1.80.8
+Copyright (c) 2011 Effekseer Project. Distributed under MIT.
+See effekseer/LICENSE.txt for the original license and copyright notice.
+
+Effects and textures: Effekseer sample collection, 00_Version16.
+Source: https://github.com/effekseer/ResourceData/tree/446ed7ab17ffee65738aa470fff0dec3a7ee17e8/samples/00_Version16
+Sample effects are distributed under CC0:
+https://effekseer.github.io/en/contribute.html
+Thanks to the Effekseer team and the sample authors.
+
+Fire effects: adaptations of Flame (Pierre vol.1) and FireBall (Pierre vol.2),
+CC0. Original author: Pierre (@HikagePierreACV).
+Source: official Effekseer 1.80.8 sample collection:
+https://github.com/effekseer/Effekseer/releases/download/1808/Effekseer1.80.8Mac-arm64.zip
+Adaptations: sustained fire column, diagonal projectile path, removal of impact
+and screen-distortion nodes, native warm colors. Editable sources: tools/vfx.
+
+Local changes to the runtime: safe disposal of loading effects and WASM
+initialization rejection handling. See docs/spell-vfx.md in the source project.

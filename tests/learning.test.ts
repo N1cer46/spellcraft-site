@@ -2,6 +2,7 @@ import { test } from "node:test";
 import assert from "node:assert/strict";
 import { readFileSync } from "node:fs";
 import ts from "typescript";
+import * as rewards from "../client/src/lib/mastery-rewards";
 import * as learning from "../client/src/lib/learning";
 import * as spellbook from "../client/src/data/spellbook";
 
@@ -77,7 +78,10 @@ test("lessons unlock only after explicit successful checks; activations count da
     },
   };
   const jsx = (type: any, props: any) => ({ type, props });
+  const notifications: { title: string; description: string }[] = [];
   const modules: any = {
+    sonner: { toast: (title: string, { description }: { description: string }) => notifications.push({ title, description }) },
+    "@/lib/mastery-rewards": rewards,
     gsap: { gsap: { matchMedia: () => ({ add() {}, revert() {} }) } },
     react,
     "react/jsx-runtime": { jsx, jsxs: jsx },
@@ -147,9 +151,12 @@ test("lessons unlock only after explicit successful checks; activations count da
     button(tree, "Начать урок").props.onClick();
     tree = render();
     assert.equal(started, 1);
+    readings = [{ symbolId: "sigil_fire", score: .95, strokeIds: ["wrong-zone"], zone: "ring" }];
+    tree = render();
     button(tree, "Проверить попытку").props.onClick();
     tree = render();
-    assert.equal(learning.loadProgress(localStorage).completed.length, 0);
+    assert.equal(learning.loadProgress(localStorage).completed.length, 0, "a symbol in the wrong zone cannot complete a lesson");
+    assert.ok(walk(tree).some(node => node.props?.["aria-label"] === "Потренировать: Огонь"));
     button(tree, "Начать урок").props.onClick();
     tree = render();
     readings = [
@@ -169,7 +176,12 @@ test("lessons unlock only after explicit successful checks; activations count da
       10
     );
     const at = new Date(2026, 10, 10, 12).getTime();
-    cast = { recipe: learning.dailyRecipe("2026-11-10"), serial: 1, at };
+    const recipe = learning.dailyRecipe("2026-11-10");
+    readings = [recipe.sigilId, ...recipe.requiredMarkIds].map((symbolId, index) => ({
+      symbolId, zone: index === 0 ? "center" : "ring", score: 0.95, strokeIds: [String(index)],
+    }));
+    cast = { recipe, serial: 1, at };
+    assert.equal(notifications.length, 0);
     render();
     render();
     cast = { ...cast, serial: 2 };
@@ -177,6 +189,8 @@ test("lessons unlock only after explicit successful checks; activations count da
     const result = learning.loadProgress(localStorage);
     assert.equal(result.casts, 2);
     assert.deepEqual(result.days, ["2026-11-10"]);
+    assert.equal(notifications.length, 1, "repeated activations must not announce a reward again");
+    assert.match(notifications[0].description, /Киноварь/);
   } finally {
     globalThis.window = oldWindow;
     if (oldStorage)
@@ -208,4 +222,19 @@ test("successful casts credit only their recognised ingredients once", () => {
   assert.equal(learning.masteryProgress(first).learned, 5);
   assert.equal(first.symbols.sigil_water, undefined);
   assert.deepEqual(learning.recordCastSymbols(first, readings, recipe), first);
+});
+
+test("mastery rewards match every rank and gate preferences by the current level", () => {
+  assert.deepEqual(rewards.masteryRewards.map(reward => reward.level),
+    learning.masteryRanks.slice(1).map((_, index) => index + 2));
+  for (const ink of Object.keys(rewards.inkColors) as rewards.InkColor[]) {
+    const level = rewards.inkColors[ink].level;
+    assert.equal(rewards.usableInk(ink, level), ink);
+    assert.equal(rewards.usableInk(ink, level - 1), "forest");
+  }
+  for (const paper of Object.keys(rewards.papers) as rewards.Paper[]) {
+    const level = rewards.papers[paper].level;
+    assert.equal(rewards.usablePaper(paper, level), paper);
+    assert.equal(rewards.usablePaper(paper, level - 1), "parchment");
+  }
 });

@@ -35,7 +35,7 @@ export const sigils: SymbolDefinition[] = [
   sigil("sigil_earth", "Земля", "Earth", "Стихии", "Твёрдость, опора, минералы и почва."),
   sigil("sigil_light", "Свет", "Light", "Стихии", "Сияние, иллюминация и видимый свет."),
   sigil("sigil_wind", "Ветер", "Wind", "Стихии", "Воздушный поток и направленное движение воздуха."),
-  sigil("sigil_wind_clean", "Ветер — чистый", "Wind (Clean)", "Стихии", "Минимальный чистый вариант ветрового сигила."),
+  sigil("sigil_wind_clean", "Ветер — чистый", "Wind (Clean)", "Стихии", "Минимальный чистый вариант ветрового глифа."),
   sigil("sigil_wind_underfoot", "Ветер под ногами", "Wind Underfoot", "Стихии", "Вихрь у земли: опора, шаг или подъём."),
   sigil("sigil_aeriforms", "Воздухообразное", "Aeriforms", "Стихии", "Пар, дым, дух и иные эфемерные субстанции."),
   sigil("sigil_whorling_winds", "Кружащие ветра", "Whorling Winds", "Стихии", "Усложнённый закручивающийся поток, подобный торнадо."),
@@ -99,7 +99,7 @@ export const marks: SymbolDefinition[] = [
   mark("mark_glaives", "Клинки", "Glaives", "Удар и разрушение", "Придаёт форму лезвий."),
   mark("mark_billow", "Вспучить", "Billow", "Удар и разрушение", "Вздувает или вспучивает волной."),
   mark("mark_aeriforms_defined", "Уточнить воздух", "Aeriforms Defined", "Разное", "Детализирует газообразную субстанцию."),
-  mark("mark_sign_of_wind", "Знак ветра", "Sign of Wind", "Разное", "Добавляет малый акцент-порыв ветра."),
+  mark("mark_sign_of_wind", "Указатель ветра", "Sign of Wind", "Разное", "Добавляет малый акцент-порыв ветра."),
 ];
 
 export const allSymbols = [...sigils, ...marks];
@@ -112,7 +112,7 @@ export const spellRecipes: SpellRecipe[] = [
   { id: "water-orb", name: "Водяная сфера", sigilId: "sigil_water", requiredMarkIds: ["mark_orb", "mark_stability", "mark_purify", "mark_float"], optionalMarkIds: [], description: "Устойчивая сферическая форма текучей воды." },
   { id: "rainfield", name: "Поле дождя", sigilId: "sigil_water", requiredMarkIds: ["mark_rain", "mark_region", "mark_radial", "mark_dispersion"], optionalMarkIds: [], description: "Осадки, ограниченные заданной областью." },
   { id: "crystal-spire", name: "Кристаллический шип", sigilId: "sigil_earth", requiredMarkIds: ["mark_diamond", "mark_convergence", "mark_column", "mark_solidify"], optionalMarkIds: [], description: "Собранная в гранёную точку минеральная опора." },
-  { id: "light-window", name: "Окно света", sigilId: "sigil_light", requiredMarkIds: ["mark_window", "mark_vision", "mark_focus", "mark_stability"], optionalMarkIds: [], description: "Световой обзор через точно заданное окно." },
+  { id: "light-window", name: "Окно света", sigilId: "sigil_light", requiredMarkIds: ["mark_window", "mark_vision", "mark_focus", "mark_stability"], optionalMarkIds: [], description: "Позволяет видеть скрытые в темноте предметы и путь сквозь световое окно. За его пределами сохраняется темнота." },
   { id: "wind-step", name: "Шаг ветра", sigilId: "sigil_wind_underfoot", requiredMarkIds: ["mark_levitation", "mark_sign_of_wind", "mark_stability", "mark_float"], optionalMarkIds: [], description: "Короткий подъём и устойчивый шаг на воздушном вихре." },
   { id: "cyclone", name: "Спираль ветров", sigilId: "sigil_whorling_winds", requiredMarkIds: ["mark_coil", "mark_dispersion", "mark_enlarge", "mark_radial"], optionalMarkIds: [], description: "Расходящийся закрученный поток воздуха." },
   { id: "winged-choir", name: "Хор крыльев", sigilId: "sigil_bird_a", requiredMarkIds: ["mark_bind", "mark_puppet", "mark_collection", "mark_float"], optionalMarkIds: [], description: "Связанные крылатые проявления, движущиеся как единое целое." },

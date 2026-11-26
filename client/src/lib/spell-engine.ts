@@ -26,7 +26,7 @@ export function resolveSpell(recognitions: Recognition[], strokes:InkStroke[] = 
     else if(Math.abs(dx)>Math.abs(dy)*Math.sqrt(3))occupied.add(dx<0?"слева":"справа");
   }
   const missing=["сверху","справа","снизу","слева"].filter(side=>!occupied.has(side));
-  if(missing.length)return {recipe:null,sigilId,markIds,error:`Нужны минимум четыре распознанных знака вокруг сигила. Добавьте знаки: ${missing.join(", ")}. Затем снова замкните круг.`};
+  if(missing.length)return {recipe:null,sigilId,markIds,error:`Нужно минимум четыре распознанных указателя вокруг глифа. Добавьте указатели: ${missing.join(", ")}. Затем снова замкните круг сигила.`};
   const matching = spellRecipes.filter((recipe) => recipe.sigilId === sigilId && recipe.requiredMarkIds.every((markId) => markIds.includes(markId)) && markIds.every(id => recipe.requiredMarkIds.includes(id) || recipe.optionalMarkIds?.includes(id)));
   const recipe = matching.sort((a, b) => (b.optionalMarkIds?.filter((markId) => markIds.includes(markId)).length ?? 0) - (a.optionalMarkIds?.filter((markId) => markIds.includes(markId)).length ?? 0))[0] ?? composeSpell(sigilId, markIds);
   return { recipe, sigilId, markIds };

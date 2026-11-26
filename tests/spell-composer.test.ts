@@ -6,6 +6,7 @@ import {
   loadPersonalSpells,
   savePersonalSpell,
   deletePersonalSpell,
+  renamePersonalSpell,
 } from "../client/src/lib/personal-grimoire";
 import {
   byId,
@@ -151,6 +152,15 @@ test("custom names persist, old collections still load, and deletion preserves o
   savePersonalSpell(storage, first);
   savePersonalSpell(storage, second);
   assert.equal(loadPersonalSpells(storage)[0].name, "Маленькое солнце");
+  renamePersonalSpell(storage, first.id, "  Тихое солнце  ");
+  const renamed = loadPersonalSpells(storage);
+  assert.equal(renamed[0].name, "Тихое солнце");
+  assert.equal(renamed[0].id, first.id);
+  assert.deepEqual(renamed[0].requiredMarkIds, first.requiredMarkIds);
+  assert.equal(renamed[1].name, "Фонтан");
+  assert.throws(() => renamePersonalSpell(storage, first.id, "  "));
+  assert.throws(() => renamePersonalSpell(storage, "missing", "Формула"));
+  assert.deepEqual(loadPersonalSpells(storage), renamed);
   assert.deepEqual(
     deletePersonalSpell(storage, first.id).map(r => r.name),
     ["Фонтан"]

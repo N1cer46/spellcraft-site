@@ -30,6 +30,8 @@ test("grimoire replaces both working panels and returns without unmounting the d
     Entry = () => null;
   const jsx = (type: unknown, props: any) => ({ type, props });
   const modules: any = {
+    "@/components/ThemeToggle": { default: () => null },
+    "@/components/AtelierProfile": { default: () => null },
     "@/components/LearningPanel": { default: Learning },
     "@/lib/personal-grimoire": {},
     react,

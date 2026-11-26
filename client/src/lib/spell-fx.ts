@@ -1,5 +1,14 @@
 import { composeSpell } from "./spell-composer";
 import { SPELL_PLANE, projectSpellPoint } from "./spell-projection";
+import {
+  drawCrystalSpire, drawIceGlaives, drawRainField, drawStoneHeart,
+} from "./spell-scene-art";
+import { drawGuidingThread, drawLightWindow, drawMirrorPrism, drawSignalBeacon } from "./light-scenes";
+import {
+  drawClearBreeze, drawCyclone, drawTidalGather, drawWindChannel, drawWindStep,
+} from "./air-scenes";
+import { drawBloom, drawPetalVortex, drawWingedChoir } from "./nature-scenes";
+import { drawFireColumn, drawFireLance } from "./fire-scenes";
 import type { SpellRecipe, SymbolDefinition } from "@/data/spellbook";
 
 type Material =
@@ -248,6 +257,27 @@ export function sampleSpellParticle(
   return { ...projectSpellPoint(x, y, z), z, radius, alpha, phase };
 }
 
+const scenes: ReadonlyMap<string, (ctx: CanvasRenderingContext2D, time: number, growth: number) => void> = new Map([
+  ["fire-column", drawFireColumn],
+  ["fire-lance", drawFireLance],
+  ["rainfield", drawRainField],
+  ["crystal-spire", drawCrystalSpire],
+  ["light-window", drawLightWindow],
+  ["prism-mirror", drawMirrorPrism],
+  ["light-beacon", drawSignalBeacon],
+  ["guiding-thread", drawGuidingThread],
+  ["ice-glaives", drawIceGlaives],
+  ["stone-heart", drawStoneHeart],
+  ["wind-step", drawWindStep],
+  ["cyclone", drawCyclone],
+  ["winged-choir", drawWingedChoir],
+  ["bloom", drawBloom],
+  ["wind-channel", drawWindChannel],
+  ["clear-breeze", drawClearBreeze],
+  ["tidal-gather", drawTidalGather],
+  ["petal-vortex", drawPetalVortex],
+]);
+
 export function startSpellFx(
   canvas: HTMLCanvasElement,
   fx: SpellFx,
@@ -256,6 +286,7 @@ export function startSpellFx(
 ): () => void {
   const ctx = canvas.getContext("2d");
   if (!ctx) return () => {};
+  const scene = scenes.get(fx.id);
   let frame = 0,
     stopped = false,
     time = 0,
@@ -317,6 +348,16 @@ export function startSpellFx(
     ctx.scale(size, size);
     ctx.lineCap = "round";
     ctx.lineJoin = "round";
+    if (scene) {
+      ctx.save();
+      ctx.globalAlpha = 1;
+      ctx.globalCompositeOperation = "source-over";
+      const sceneTime = reduced ? 1.2 : time;
+      const growth = reduced ? 1 : 0.2 + 0.8 * (1 - (1 - clamp(time / 0.38)) ** 3);
+      scene(ctx, sceneTime, growth);
+      ctx.restore();
+      return;
+    }
     const intro = reduced ? 1 : clamp(time / 0.65),
       t = reduced ? 3 : time;
     const particles = Array.from({ length: fx.count }, (_, i) => ({
